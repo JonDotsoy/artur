@@ -75,3 +75,20 @@ test("should make a router with a url-path string", async () => {
 
   expect(logParams).toBeCalledWith({ name: "mark" });
 });
+
+test("should validate case on REAMDE file", async () => {
+  const router = new Router();
+
+  router.use("GET", "/users/:name", {
+    fetch: async (request: Request) => {
+      const { name } = params(request);
+      return new Response(`hello ${name}`);
+    },
+  });
+
+  const response = await router.fetch(
+    new Request("http://localhost/users/mark"),
+  );
+
+  expect(await response.text()).toEqual("hello mark");
+});
