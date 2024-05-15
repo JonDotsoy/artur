@@ -1,7 +1,7 @@
 {
   "name": "@jondotsoy/artur",
   "description": "Framework to write lite apps",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "module": "./lib/esm/index.js",
   "main": "./lib/cjs/index.js",
@@ -49,5 +49,13 @@
   },
   "files": [
     "./lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonDotsoy/artur.git"
+  },
+  "keywords": [
+    "framework",
+    "router"
   ]
 }
