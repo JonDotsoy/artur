@@ -1,0 +1,53 @@
+{
+  "name": "@jondotsoy/artur",
+  "description": "Framework to write lite apps",
+  "version": "0.1.0",
+  "type": "module",
+  "module": "./lib/esm/index.js",
+  "main": "./lib/cjs/index.js",
+  "types": "./lib/types/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./lib/types/*"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js",
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/esm/index.js"
+    },
+    "./http/router": {
+      "import": "./lib/esm/http/router.js",
+      "require": "./lib/cjs/http/router.js",
+      "types": "./lib/types/http/router.d.ts",
+      "default": "./lib/esm/http/router.js"
+    },
+    "./http/utils/url-path-pattern": {
+      "import": "./lib/esm/http/utils/url-path-pattern.js",
+      "require": "./lib/cjs/http/utils/url-path-pattern.js",
+      "types": "./lib/types/http/utils/url-path-pattern.d.ts",
+      "default": "./lib/esm/http/utils/url-path-pattern.js"
+    }
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.2.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@jondotsoy/symbol.initialize": "^0.1.2"
+  },
+  "scripts": {
+    "prepack": "make build",
+    "fmt": "prettier -w ."
+  },
+  "files": [
+    "./lib"
+  ]
+}
