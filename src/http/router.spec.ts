@@ -1,5 +1,5 @@
 import { test, expect, mock } from "bun:test";
-import { Router } from "./router.js";
+import { Router, params } from "./router.js";
 import { urlPathPattern } from "./utils/url-path-pattern.js";
 
 test("should make a router", async () => {
@@ -56,4 +56,22 @@ test("should request a bad request and pass the error", async () => {
   const response = router.fetch(new Request("http://localhost/hello"));
 
   expect(response).rejects.toThrowError("bad fetch");
+});
+
+test("should make a router with a url-path string", async () => {
+  const router = new Router({ errorHandling: "pass" });
+
+  const logParams = mock((_params) => {});
+  const fetch = mock((request: Request) => {
+    logParams(params(request));
+    return new Response();
+  });
+
+  router.use("GET", `/hello/:name`, { fetch });
+
+  const response = await router.fetch(
+    new Request("http://localhost/hello/mark"),
+  );
+
+  expect(logParams).toBeCalledWith({ name: "mark" });
 });
