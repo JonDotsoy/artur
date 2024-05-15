@@ -5,15 +5,15 @@ Framework to build a modern apps.
 ## Install
 
 ```shell
-npm i artur
+npm i @jondotsoy/artur
 ```
 
 ## Fetch Router
 
-The `artur/http/router` module provide a router manager to Request/Response patterns.
+The `@jondotsoy/artur/http/router` module provide a router manager to Request/Response patterns.
 
 ```ts
-import { Router } from "artur/http/router";
+import { Router } from "@jondotsoy/artur/http/router";
 
 const router = new Router();
 
