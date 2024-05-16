@@ -87,5 +87,5 @@ test("should validate case on REAMDE file", async () => {
     new Request("http://localhost/users/mark"),
   );
 
-  expect(await response.text()).toEqual("hello mark");
+  expect(await response!.text()).toEqual("hello mark");
 });

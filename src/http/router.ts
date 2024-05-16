@@ -32,7 +32,7 @@ export type Route<T> = {
   options?: {
     /** @deprecated */
     middlewares?: Middleware<T>[];
-    fetch?: (request: RequestWithParams<T>) => LikePromise<Response>;
+    fetch?: (request: RequestWithParams<T>) => LikePromise<Response | null>;
   };
 };
 
@@ -116,19 +116,19 @@ export class Router {
           //   }
           // }
           if (route.options?.fetch) {
-            let res: Response = await route.options.fetch(request);
+            let res = await route.options.fetch(request);
             // for (const middlewareResponse of middlewaresResponse) {
             //   const remplace = await Promise.resolve(middlewareResponse(res));
             //   if (remplace) {
             //     res = remplace;
             //   }
             // }
-            return res;
+            if (res) return res;
           }
         }
       }
 
-      if (this.options.errorHandling === "pass") return;
+      if (this.options.errorHandling === "pass") return null;
 
       return new Response(null, { status: 404 });
     } catch (ex) {
