@@ -1,11 +1,21 @@
-import { URLPathPattern, urlPathPattern } from "./utils/url-path-pattern.js";
+export { URLPattern } from "urlpattern-polyfill";
+import { URLPattern } from "urlpattern-polyfill";
 
-export const params = <T extends string>(request: RequestWithParams<T>) => {
-  const paramsFound = urlPathPattern.params(request);
+const mapRequestParamas = new WeakMap<
+  Request,
+  Record<string, string | undefined>
+>();
+
+type P<T> = T extends string
+  ? Record<T, string>
+  : Record<string, undefined | string>;
+
+export const params = <T>(request: RequestWithParams<T>): P<T> => {
+  const paramsFound = mapRequestParamas.get(request);
 
   if (!paramsFound) throw new Error(`Missing params`);
 
-  return paramsFound as Record<T, string>;
+  return paramsFound as P<T>;
 };
 
 export type RequestWithParams<T> = Request & { ["[[[s]]]"]?: T };
@@ -19,26 +29,13 @@ export type Middleware<T> = (
 
 export type Route<T> = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
-  urlPathPattern: URLPathPattern<T>;
+  urlPattern: URLPattern;
   options?: {
+    /** @deprecated */
     middlewares?: Middleware<T>[];
     fetch?: (request: RequestWithParams<T>) => LikePromise<Response>;
   };
 };
-
-type RouterUseParams<T> =
-  | [
-      method: Route<T>["method"],
-      route: Route<T>["urlPathPattern"] | string,
-      options?: Route<T>["options"],
-    ]
-  | [
-      options: {
-        method: Route<T>["method"];
-        route: Route<T>["urlPathPattern"] | string;
-        options?: Route<T>["options"];
-      },
-    ];
 
 export const defaultCatchin = (ex: unknown) => {
   if (ex instanceof Error) {
@@ -59,6 +56,11 @@ export type RouterOptions = {
     | ((ex: unknown) => Promise<Response>);
 };
 
+const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
+  const { 0: _, ...variables } = object.groups;
+  return variables;
+};
+
 export class Router {
   routes: Route<any>[] = [];
 
@@ -71,36 +73,15 @@ export class Router {
     };
   }
 
-  use<T>(...params: RouterUseParams<T>) {
-    const descomposeParams = <T>(params: RouterUseParams<T>) => {
-      if (typeof params[0] === "string") {
-        const [method, route, options] = params;
-        return {
-          method,
-          route,
-          options,
-        };
-      }
-      if (typeof params[0] === "object" && params[0] !== null) {
-        const method = params[0].method;
-        const route = params[0].route;
-        const options = params[0].options;
-        return {
-          method,
-          route,
-          options,
-        };
-      }
-
-      throw new Error("Invalid parmas format");
-    };
-
-    const { method, route, options } = descomposeParams(params);
-
+  use<T>(
+    method: Route<T>["method"],
+    route: Route<T>["urlPattern"] | string,
+    options?: Route<T>["options"],
+  ) {
     this.routes.push({
       method,
-      urlPathPattern:
-        typeof route === "string" ? URLPathPattern.of(route) : route,
+      urlPattern:
+        typeof route === "string" ? new URLPattern({ pathname: route }) : route,
       options,
     });
 
@@ -109,28 +90,39 @@ export class Router {
 
   async fetch(request: Request) {
     try {
-      const middlewaresResponse: MiddlewareResponse[] = [];
+      // const middlewaresResponse: MiddlewareResponse[] = [];
+
       for (const route of this.routes) {
+        let urlPatternResult: URLPatternResult | null;
         if (
           route.method === request.method &&
-          route.urlPathPattern.test(request)
+          (urlPatternResult = route.urlPattern.exec(request.url))
         ) {
-          for (const middleware of route.options?.middlewares ?? []) {
-            const middlewareResponse = await Promise.resolve(
-              middleware(request),
-            );
-            if (middlewareResponse) {
-              middlewaresResponse.push(middlewareResponse);
-            }
-          }
+          mapRequestParamas.set(request, {
+            ...groupURLPatternComponentResult(urlPatternResult.protocol),
+            ...groupURLPatternComponentResult(urlPatternResult.username),
+            ...groupURLPatternComponentResult(urlPatternResult.password),
+            ...groupURLPatternComponentResult(urlPatternResult.hostname),
+            ...groupURLPatternComponentResult(urlPatternResult.hash),
+            ...groupURLPatternComponentResult(urlPatternResult.pathname),
+          });
+
+          // for (const middleware of route.options?.middlewares ?? []) {
+          //   const middlewareResponse = await Promise.resolve(
+          //     middleware(request),
+          //   );
+          //   if (middlewareResponse) {
+          //     middlewaresResponse.push(middlewareResponse);
+          //   }
+          // }
           if (route.options?.fetch) {
             let res: Response = await route.options.fetch(request);
-            for (const middlewareResponse of middlewaresResponse) {
-              const remplace = await Promise.resolve(middlewareResponse(res));
-              if (remplace) {
-                res = remplace;
-              }
-            }
+            // for (const middlewareResponse of middlewaresResponse) {
+            //   const remplace = await Promise.resolve(middlewareResponse(res));
+            //   if (remplace) {
+            //     res = remplace;
+            //   }
+            // }
             return res;
           }
         }

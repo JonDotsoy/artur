@@ -1,6 +1,5 @@
 import { test, expect, mock } from "bun:test";
 import { Router, params } from "./router.js";
-import { urlPathPattern } from "./utils/url-path-pattern.js";
 
 test("should make a router", async () => {
   new Router();
@@ -11,7 +10,7 @@ test("should map a route and execute their fetch function", async () => {
 
   const fetch = mock(() => new Response("ok"));
 
-  router.use("GET", urlPathPattern`/a`, { fetch: fetch });
+  router.use("GET", `/a`, { fetch: fetch });
 
   const res = await router.fetch(new Request("http://localhost/a"));
 
@@ -36,7 +35,7 @@ test("should request a bad request and expect a 500 response", async () => {
     throw new Error("bad fetch");
   });
 
-  router.use("GET", urlPathPattern`/hello`, { fetch });
+  router.use("GET", `/hello`, { fetch });
 
   const response = await router.fetch(new Request("http://localhost/hello"));
 
@@ -51,7 +50,7 @@ test("should request a bad request and pass the error", async () => {
     throw new Error("bad fetch");
   });
 
-  router.use("GET", urlPathPattern`/hello`, { fetch });
+  router.use("GET", `/hello`, { fetch });
 
   const response = router.fetch(new Request("http://localhost/hello"));
 
@@ -69,9 +68,7 @@ test("should make a router with a url-path string", async () => {
 
   router.use("GET", `/hello/:name`, { fetch });
 
-  const response = await router.fetch(
-    new Request("http://localhost/hello/mark"),
-  );
+  await router.fetch(new Request("http://localhost/hello/mark"));
 
   expect(logParams).toBeCalledWith({ name: "mark" });
 });
@@ -79,8 +76,8 @@ test("should make a router with a url-path string", async () => {
 test("should validate case on REAMDE file", async () => {
   const router = new Router();
 
-  router.use("GET", "/users/:name", {
-    fetch: async (request: Request) => {
+  router.use<"name">("GET", "/users/:name", {
+    fetch: async (request) => {
       const { name } = params(request);
       return new Response(`hello ${name}`);
     },

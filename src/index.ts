@@ -1,1 +1,1 @@
-export { Router } from "./http/router.js";
+export { Router, params } from "./http/router.js";
