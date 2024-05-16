@@ -1,4 +1,3 @@
-export { URLPattern } from "urlpattern-polyfill";
 import { URLPattern } from "urlpattern-polyfill";
 
 const mapRequestParamas = new WeakMap<
