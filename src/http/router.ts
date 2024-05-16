@@ -128,6 +128,8 @@ export class Router {
         }
       }
 
+      if (this.options.errorHandling === "pass") return;
+
       return new Response(null, { status: 404 });
     } catch (ex) {
       if (typeof this.options.errorHandling === "function")
