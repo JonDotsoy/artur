@@ -19,20 +19,32 @@ export const params = <T>(request: RequestWithParams<T>): P<T> => {
 
 export type RequestWithParams<T> = Request & { ["[[[s]]]"]?: T };
 export type LikePromise<T> = Promise<T> | T;
-export type MiddlewareResponse = (
+/** @deprecated */
+export type deprecated_MiddlewareResponse = (
   response: Response,
 ) => void | LikePromise<Response>;
-export type Middleware<T> = (
+/** @deprecated */
+export type deprecated_Middleware<T> = (
   request: RequestWithParams<T>,
 ) => void | ((response: Response) => void | LikePromise<Response>);
+
+export type FetcherResponse = LikePromise<Response | null>;
+
+export type MiddlewareWrapResponse = (
+  response: Response,
+) => LikePromise<Response>;
+export type Middleware<T> = (
+  request: RequestWithParams<T>,
+) => LikePromise<MiddlewareWrapResponse>;
 
 export type Route<T> = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
   urlPattern: URLPattern;
   options?: {
     /** @deprecated */
+    deprecated_middlewares?: deprecated_Middleware<T>[];
     middlewares?: Middleware<T>[];
-    fetch?: (request: RequestWithParams<T>) => LikePromise<Response | null>;
+    fetch?: (request: RequestWithParams<T>) => FetcherResponse;
   };
 };
 
@@ -89,6 +101,8 @@ export class Router {
   }
 
   async fetch(request: Request) {
+    const responseWraps: MiddlewareWrapResponse[] = [];
+
     try {
       // const middlewaresResponse: MiddlewareResponse[] = [];
 
@@ -115,6 +129,9 @@ export class Router {
           //     middlewaresResponse.push(middlewareResponse);
           //   }
           // }
+          for (const m of route.options?.middlewares ?? []) {
+            responseWraps.unshift(await m(request));
+          }
           if (route.options?.fetch) {
             let res = await route.options.fetch(request);
             // for (const middlewareResponse of middlewaresResponse) {
@@ -123,7 +140,12 @@ export class Router {
             //     res = remplace;
             //   }
             // }
-            if (res) return res;
+            if (res) {
+              for (const m of responseWraps) {
+                res = await m(res);
+              }
+              return res;
+            }
           }
         }
       }

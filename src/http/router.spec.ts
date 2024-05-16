@@ -89,3 +89,45 @@ test("should validate case on REAMDE file", async () => {
 
   expect(await response!.text()).toEqual("hello mark");
 });
+
+test("should call the middleware", async () => {
+  const router = new Router();
+
+  const calls: string[] = [];
+
+  const callbacksResponses = Array(3)
+    .fill(true)
+    .map((_, i) =>
+      mock((res: Response) => (calls.push(`callbackResponse_${i}`), res)),
+    );
+  const callbacksRequests = callbacksResponses.map((cb, i) =>
+    mock((req: Request) => (calls.push(`callbackRequest_${i}`), cb)),
+  );
+
+  router.use<"name">("GET", "/users/:name", {
+    middlewares: callbacksRequests,
+    fetch: async (request) => {
+      const { name } = params(request);
+      return new Response(`hello ${name}`);
+    },
+  });
+
+  const response = await router.fetch(
+    new Request("http://localhost/users/mark"),
+  );
+
+  expect(await response!.text()).toEqual("hello mark");
+  for (const callbackRequest of callbacksRequests)
+    expect(callbackRequest).toBeCalled();
+  for (const callbackResponse of callbacksResponses)
+    expect(callbackResponse).toBeCalled();
+
+  expect(calls).toEqual([
+    "callbackRequest_0",
+    "callbackRequest_1",
+    "callbackRequest_2",
+    "callbackResponse_2",
+    "callbackResponse_1",
+    "callbackResponse_0",
+  ]);
+});
