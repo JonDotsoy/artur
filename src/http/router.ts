@@ -37,6 +37,7 @@ export type Route<T> = {
 };
 
 export const defaultCatchin = (ex: unknown) => {
+  console.error(ex);
   if (ex instanceof Error) {
     return new Response(null, {
       status: 500,
