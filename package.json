@@ -25,12 +25,6 @@
       "require": "./lib/cjs/http/router.js",
       "types": "./lib/types/http/router.d.ts",
       "default": "./lib/esm/http/router.js"
-    },
-    "./http/utils/url-path-pattern": {
-      "import": "./lib/esm/http/utils/url-path-pattern.js",
-      "require": "./lib/cjs/http/utils/url-path-pattern.js",
-      "types": "./lib/types/http/utils/url-path-pattern.d.ts",
-      "default": "./lib/esm/http/utils/url-path-pattern.js"
     }
   },
   "devDependencies": {
