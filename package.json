@@ -35,6 +35,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@jondotsoy/decorate": "^0.1.0",
     "@jondotsoy/symbol.initialize": "^0.1.2",
     "urlpattern-polyfill": "^10.0.0"
   },
