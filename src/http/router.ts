@@ -1,4 +1,17 @@
 import { URLPattern } from "urlpattern-polyfill";
+import { type Decorator, type Descriptor, decorate } from "@jondotsoy/decorate";
+import { errorToResponse } from "../utils/describeErrorResponse";
+
+type HTTPMethods =
+  | "GET"
+  | "POST"
+  | "PUT"
+  | "HEAD"
+  | "DELETE"
+  | "PATCH"
+  | "OPTIONS"
+  | "CONNECT"
+  | "TRACE";
 
 const mapRequestParamas = new WeakMap<
   Request,
@@ -19,49 +32,45 @@ export const params = <T>(request: RequestWithParams<T>): P<T> => {
 
 export type RequestWithParams<T> = Request & { ["[[[s]]]"]?: T };
 export type LikePromise<T> = Promise<T> | T;
-/** @deprecated */
-export type deprecated_MiddlewareResponse = (
-  response: Response,
-) => void | LikePromise<Response>;
-/** @deprecated */
-export type deprecated_Middleware<T> = (
-  request: RequestWithParams<T>,
-) => void | ((response: Response) => void | LikePromise<Response>);
 
 export type FetcherResponse = LikePromise<Response | null>;
 
 export type MiddlewareWrapResponse = (
   response: Response,
 ) => LikePromise<Response>;
-export type Middleware<T> = (
-  request: RequestWithParams<T>,
-) => LikePromise<MiddlewareWrapResponse>;
+
+export type FetchDescriptor<T> = Descriptor<
+  [request: RequestWithParams<T>],
+  FetcherResponse
+>;
+
+export type Middleware<T> = Decorator<FetchDescriptor<T>>;
 
 export type Route<T> = {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "ALL" | HTTPMethods;
   urlPattern: URLPattern;
   options?: {
-    /** @deprecated */
-    deprecated_middlewares?: deprecated_Middleware<T>[];
+    /** The test function */
+    test?: (request: Request) => Promise<boolean> | boolean;
     middlewares?: Middleware<T>[];
     fetch?: (request: RequestWithParams<T>) => FetcherResponse;
   };
 };
 
-export const defaultCatchin = (ex: unknown) => {
-  console.error(ex);
-  if (ex instanceof Error) {
-    return new Response(null, {
-      status: 500,
-      headers: {
-        "X-System-Error": ex.message,
-      },
-    });
+export const defaultCatching = (ex: unknown) => {
+  const { response, options } = errorToResponse(ex);
+
+  const expose = options.expose ?? response.status >= 500;
+
+  if (expose) {
+    console.error(ex);
   }
-  return new Response(null, { status: 500 });
+
+  return response;
 };
 
 export type RouterOptions = {
+  middlewares?: Middleware<any>[];
   errorHandling:
     | "pass"
     | "default-catching"
@@ -71,6 +80,12 @@ export type RouterOptions = {
 const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
   const { 0: _, ...variables } = object.groups;
   return variables;
+};
+
+const urlPatternFrom = (value: unknown): URLPattern => {
+  if (typeof value === "string") return new URLPattern({ pathname: value });
+  if (value instanceof URLPattern) return value;
+  throw new Error(`Cannot parse URL Pattern to ${value}`);
 };
 
 export class Router {
@@ -87,30 +102,35 @@ export class Router {
 
   use<T>(
     method: Route<T>["method"],
-    route: Route<T>["urlPattern"] | string,
+    urlPatternOrPathPattern: Route<T>["urlPattern"] | string,
     options?: Route<T>["options"],
   ) {
     this.routes.push({
       method,
-      urlPattern:
-        typeof route === "string" ? new URLPattern({ pathname: route }) : route,
+      urlPattern: urlPatternFrom(urlPatternOrPathPattern),
       options,
     });
 
     return this;
   }
 
-  async fetch(request: Request) {
-    const responseWraps: MiddlewareWrapResponse[] = [];
+  fetch = async (request: Request) => {
+    const middlewareDecorators: Middleware<any>[] = [
+      ...(this.options.middlewares ?? []),
+    ];
 
     try {
-      // const middlewaresResponse: MiddlewareResponse[] = [];
-
       for (const route of this.routes) {
         let urlPatternResult: URLPatternResult | null;
+        const matchMethod =
+          route.method === "ALL" || route.method === request.method;
+
+        const extraTestValidation =
+          (await route.options?.test?.(request)) ?? true;
         if (
-          route.method === request.method &&
-          (urlPatternResult = route.urlPattern.exec(request.url))
+          matchMethod &&
+          (urlPatternResult = route.urlPattern.exec(request.url)) &&
+          extraTestValidation
         ) {
           mapRequestParamas.set(request, {
             ...groupURLPatternComponentResult(urlPatternResult.protocol),
@@ -121,31 +141,14 @@ export class Router {
             ...groupURLPatternComponentResult(urlPatternResult.pathname),
           });
 
-          // for (const middleware of route.options?.middlewares ?? []) {
-          //   const middlewareResponse = await Promise.resolve(
-          //     middleware(request),
-          //   );
-          //   if (middlewareResponse) {
-          //     middlewaresResponse.push(middlewareResponse);
-          //   }
-          // }
-          for (const m of route.options?.middlewares ?? []) {
-            responseWraps.unshift(await m(request));
+          if (route.options?.middlewares) {
+            middlewareDecorators.push(...route.options.middlewares);
           }
+
           if (route.options?.fetch) {
-            let res = await route.options.fetch(request);
-            // for (const middlewareResponse of middlewaresResponse) {
-            //   const remplace = await Promise.resolve(middlewareResponse(res));
-            //   if (remplace) {
-            //     res = remplace;
-            //   }
-            // }
-            if (res) {
-              for (const m of responseWraps) {
-                res = await m(res);
-              }
-              return res;
-            }
+            const f: FetchDescriptor<any> = route.options.fetch;
+            const fetchDecorate = decorate(f, ...middlewareDecorators);
+            return await fetchDecorate(request);
           }
         }
       }
@@ -156,10 +159,12 @@ export class Router {
     } catch (ex) {
       if (typeof this.options.errorHandling === "function")
         return await this.options.errorHandling(ex);
+
       if (this.options.errorHandling === "pass") {
         throw ex;
       }
-      return await defaultCatchin(ex);
+
+      return await defaultCatching(ex);
     }
-  }
+  };
 }

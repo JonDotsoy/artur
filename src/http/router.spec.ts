@@ -1,5 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import { Router, params } from "./router.js";
+import { describeErrorResponse } from "../utils/describeErrorResponse.js";
 
 test("should make a router", async () => {
   new Router();
@@ -90,44 +91,151 @@ test("should validate case on REAMDE file", async () => {
   expect(await response!.text()).toEqual("hello mark");
 });
 
-test("should call the middleware", async () => {
+test("should match the request with any method", async () => {
   const router = new Router();
 
-  const calls: string[] = [];
+  router.use("ALL", "/hello", {
+    fetch: () => new Response("ok"),
+  });
 
-  const callbacksResponses = Array(3)
-    .fill(true)
-    .map((_, i) =>
-      mock((res: Response) => (calls.push(`callbackResponse_${i}`), res)),
+  const r = async (method: string) => {
+    const response = await router.fetch(
+      new Request("http://localhost/hello", { method }),
     );
-  const callbacksRequests = callbacksResponses.map((cb, i) =>
-    mock((req: Request) => (calls.push(`callbackRequest_${i}`), cb)),
-  );
+    return response?.text() ?? null;
+  };
 
-  router.use<"name">("GET", "/users/:name", {
-    middlewares: callbacksRequests,
-    fetch: async (request) => {
-      const { name } = params(request);
-      return new Response(`hello ${name}`);
-    },
+  expect(await r("GET")).toEqual("ok");
+  expect(await r("POST")).toEqual("ok");
+  expect(await r("DELETE")).toEqual("ok");
+  expect(await r("HEAD")).toEqual("ok");
+  expect(await r("OPTIONS")).toEqual("ok");
+});
+
+test("should call the router with middleware", async () => {
+  const router = new Router();
+
+  router.use("GET", "/hello", {
+    middlewares: [
+      (fetch) => async (request) => {
+        const res = await fetch(request);
+        res?.headers.set("X-Injected", "True");
+        return res;
+      },
+    ],
+    fetch: () => new Response("ok"),
   });
 
   const response = await router.fetch(
-    new Request("http://localhost/users/mark"),
+    new Request("http://localhost/hello", { method: "GET" }),
   );
 
-  expect(await response!.text()).toEqual("hello mark");
-  for (const callbackRequest of callbacksRequests)
-    expect(callbackRequest).toBeCalled();
-  for (const callbackResponse of callbacksResponses)
-    expect(callbackResponse).toBeCalled();
+  const responseText = await response?.text();
 
-  expect(calls).toEqual([
-    "callbackRequest_0",
-    "callbackRequest_1",
-    "callbackRequest_2",
-    "callbackResponse_2",
-    "callbackResponse_1",
-    "callbackResponse_0",
-  ]);
+  expect(responseText).toEqual("ok");
+  expect(response?.headers.get("x-injected")).toEqual("True");
+});
+
+test("should transfer middleware when its match", async () => {
+  const router = new Router();
+
+  router.use("ALL", "/hello", {
+    middlewares: [
+      (fetch) => async (request) => {
+        const res = await fetch(request);
+        res?.headers.set("X-Injected", "True");
+        return res;
+      },
+    ],
+  });
+
+  router.use("GET", "/hello", {
+    fetch: () => new Response("ok"),
+  });
+
+  const response = await router.fetch(
+    new Request("http://localhost/hello", { method: "GET" }),
+  );
+
+  const responseText = await response?.text();
+
+  expect(responseText).toEqual("ok");
+  expect(response?.headers.get("x-injected")).toEqual("True");
+});
+
+test("should use a route with extra test evaluation", async () => {
+  const router = new Router();
+
+  router.use("ALL", "/hello", {
+    test: (request) => request.headers.get("x-able") === "True",
+    middlewares: [
+      (fetch) => async (request) => {
+        const res = await fetch(request);
+        res?.headers.set("X-Injected", "True");
+        return res;
+      },
+    ],
+    fetch: () => new Response("ok"),
+  });
+
+  const response1 = await router.fetch(
+    new Request("http://localhost/hello", { method: "GET" }),
+  );
+
+  const response2 = await router.fetch(
+    new Request("http://localhost/hello", {
+      method: "GET",
+      headers: { "X-Able": "True" },
+    }),
+  );
+
+  expect(response1?.status).toEqual(404);
+  expect(response2?.status).toEqual(200);
+});
+
+test("should declare global middleware", async () => {
+  const router = new Router({
+    middlewares: [
+      (fetch) => async (request) => {
+        const res = await fetch(request);
+        res?.headers.set("X-Injected", "True");
+        return res;
+      },
+    ],
+  });
+
+  router.use("ALL", "/hello", {
+    fetch: () => new Response("ok"),
+  });
+
+  const response = await router.fetch(new Request("http://localhost/hello"));
+
+  const responseText = await response?.text();
+
+  expect(responseText).toEqual("ok");
+  expect(response?.headers.get("x-injected")).toEqual("True");
+});
+
+test("should customize the error", async () => {
+  const guardCanAccess = (_request: Request) => {
+    try {
+      throw new Error("bad");
+    } catch (ex) {
+      describeErrorResponse(ex, new Response(null, { status: 403 }));
+      throw ex;
+    }
+  };
+
+  const router = new Router();
+
+  router.use("ALL", "/hello", {
+    fetch: (request) => {
+      guardCanAccess(request);
+      return new Response("ok");
+    },
+  });
+
+  const response = await router.fetch(new Request("http://localhost/hello"));
+
+  expect(response?.status).toEqual(403);
 });
