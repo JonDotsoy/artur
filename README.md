@@ -1,6 +1,6 @@
 # artur
 
-Framework to build a modern apps.
+Framework to build a modern app.
 
 ## Install
 
