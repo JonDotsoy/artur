@@ -1,8 +1,8 @@
-# artur
+# Artur
 
-Framework to build a modern app.
+Artur is a modern web framework for building web applications with ease. It provides a powerful router system, middleware support, and an easy-to-use API.
 
-**Example:**
+## Example Usage
 
 On [Bun](https://bun.sh)
 
@@ -42,7 +42,9 @@ server.listen(3000, "127.0.0.1", () => {
 });
 ```
 
-## Install
+## Installation
+
+To install Artur, simply run the following command in your terminal:
 
 ```shell
 npm i @jondotsoy/artur
@@ -50,7 +52,7 @@ npm i @jondotsoy/artur
 
 ## Fetch Router
 
-The `@jondotsoy/artur/http/router` module provide a router manager to Request/Response patterns.
+The `@jondotsoy/artur/http/router` module provides a router manager to handle Request/Response patterns.
 
 ```ts
 import { Router, params } from "@jondotsoy/artur/http/router";
@@ -58,7 +60,7 @@ import { Router, params } from "@jondotsoy/artur/http/router";
 const router = new Router();
 
 router.use("GET", "/users/:name", {
-  fetch: async (request: Request) => {
+  fetch: async (request) => {
     const { name } = params(request);
     return new Response(`hello ${name}`);
   },
@@ -71,7 +73,7 @@ expect(await response.text()).toEqual("hello mark");
 
 ## Middleware
 
-The middleware wrap the fetch function modify the input and output of this function.
+Middleware wrap the fetch function and modify the input and output of this function.
 
 ```ts
 router.use("GET", "/hello", {
@@ -87,7 +89,7 @@ router.use("GET", "/hello", {
 
 ## Router
 
-The route describe how to match a request object. To describe a route is using the api `Router.prototype.use(method: string, path_pattern: string)`.
+The route describes how to match a request object. To describe a route, use the API `Router.prototype.use(method: string, path_pattern: string)`.
 
 ```ts
 router.use("GET", "/hello", {
@@ -95,7 +97,7 @@ router.use("GET", "/hello", {
 });
 ```
 
-Methods allows is `GET`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PUT`, `PATCH`. Also you can use `ALL` to match any method.
+Methods allow are `GET`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PUT`, `PATCH`. Also you can use `ALL` to match any method.
 
 The path pattern use the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API) to match the request object. If the path pattern is a string only evaluate the pathname to evaluate the url use a URLPattern object.
 
@@ -107,13 +109,11 @@ router.use("GET", new URLPattern({ protocol: "https", pathname: "/hello" }), {
 
 ## Catch Errors
 
-By default the router catch any error, return a response with status 500 and log this error on console.
-
-Is posible customize the response related with a error to this use the `describeErrorResponse` function. The next sample catch a jwt message and response a response with status 401.
+By default, the router catch any error and return a response with status 500. You can also customize the response related with a error using the `describeErrorResponse` function. The next sample catch a jwt message and response a response with status 401.
 
 ```ts
 try {
-  verifyHeaderAuthorization(request.heageders.get('authorization'));
+  verifyHeaderAuthorization(request.headers.get('authorization'));
 } catch (ex) {
   if (ex instaceof JWTError) {
     describeErrorResponse(ex, new Response(ex.message, {status: 401}));
