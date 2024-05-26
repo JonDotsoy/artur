@@ -1,6 +1,7 @@
 import { URLPattern } from "urlpattern-polyfill";
 import { type Decorator, type Descriptor, decorate } from "@jondotsoy/decorate";
-import { errorToResponse } from "../utils/describeErrorResponse";
+import { errorToResponse } from "../utils/describeErrorResponse.js";
+import type { IncomingMessage } from "http";
 
 type HTTPMethods =
   | "GET"
@@ -167,4 +168,63 @@ export class Router {
       return await defaultCatching(ex);
     }
   };
+
+  async requestListener(
+    req: IncomingMessage,
+    res: import("http").ServerResponse<import("http").IncomingMessage> & {
+      req: import("http").IncomingMessage;
+    },
+  ) {
+    const toReadable = (req: IncomingMessage) => {
+      if (!req.method || ["GET", "HEAD"].includes(req.method)) return undefined;
+      return new ReadableStream({
+        start: (controller) => {
+          req.addListener("data", (chunk) => {
+            controller.enqueue(new Uint8Array(chunk));
+          });
+          req.addListener("close", () => {
+            controller.close();
+          });
+        },
+      });
+    };
+    const url = new URL(
+      req.url ?? "/",
+      new URL(`http://${req.headers.host ?? "localhost"}/`),
+    ).toString();
+    const method = req.method;
+    const headers = new Headers();
+    for (const [headerName, headerValue] of Object.entries(req.headers)) {
+      if (typeof headerValue === "string") headers.set(headerName, headerValue);
+      if (Array.isArray(headerValue))
+        headerValue.forEach((headerValue) =>
+          headers.append(headerName, headerValue),
+        );
+    }
+    const request = new Request(url, {
+      method,
+      headers,
+      body: toReadable(req),
+      duplex: "half",
+    });
+    const response = await this.fetch(request);
+
+    if (!response) return false;
+
+    res.statusCode = response.status;
+    res.statusMessage = response.statusText;
+    for (const [key, value] of response.headers) {
+      res.appendHeader(key, value);
+    }
+    if (response.body) {
+      for await (const chunk of response.body) {
+        res.write(chunk);
+      }
+    }
+    res.end();
+
+    return true;
+    // console.log("🚀 ~ Router ~ requestListener ~ url:", url)
+    // throw new Error("Method not implemented.");
+  }
 }

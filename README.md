@@ -2,6 +2,46 @@
 
 Framework to build a modern app.
 
+**Example:**
+
+On [Bun](https://bun.sh)
+
+```ts
+const router = new Router();
+
+router.use("GET", "/hello", {
+  fetch: (request) => new Response("Hello world"),
+});
+
+serve({
+  port: 3000,
+  fetch(request) {
+    return router.fetch(request);
+  },
+});
+```
+
+On [NodeJS](https://nodejs.org)
+
+```ts
+import { createServer } from "node:http";
+
+const router = new Router();
+
+router.use("GET", "/hello", {
+  fetch: (request) => new Response("Hello world"),
+});
+
+const server = createServer((req, res) => {
+  router.requestListener(req, res);
+});
+
+// starts a simple http server locally on port 3000
+server.listen(3000, "127.0.0.1", () => {
+  console.log("Listening on 127.0.0.1:3000");
+});
+```
+
 ## Install
 
 ```shell

@@ -1,5 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import { Router, params } from "./router.js";
+import { disposeWithController } from "dispose-with-controller";
 import { describeErrorResponse } from "../utils/describeErrorResponse.js";
 
 test("should make a router", async () => {
@@ -238,4 +239,54 @@ test("should customize the error", async () => {
   const response = await router.fetch(new Request("http://localhost/hello"));
 
   expect(response?.status).toEqual(403);
+});
+
+test("should attach a http server to Node", async () => {
+  const describeHTTPServer = async (server: import("node:http").Server) => {
+    if (!server.listening) {
+      await new Promise((resolve, reject) => {
+        server.addListener("error", reject);
+        server.addListener("listening", resolve);
+      });
+    }
+
+    const address = server.address();
+    const url =
+      typeof address === "object" && address !== null
+        ? new URL(`http://localhost:${address.port}`)
+        : null;
+
+    if (!url) throw new Error("Cannot get the address");
+
+    return { url };
+  };
+
+  await using disposes = disposeWithController();
+  disposes.add(() => {
+    server.close();
+  });
+
+  const http = await import("node:http");
+
+  const router = new Router();
+
+  router.use("POST", "/", {
+    fetch: () => new Response("ok", { headers: { a: "b" } }),
+  });
+
+  const server = http
+    .createServer(async (req, res) => {
+      await router.requestListener(req, res);
+    })
+    .listen();
+
+  const { url } = await describeHTTPServer(server);
+
+  const response = await fetch(`${new URL("/", url)}`, {
+    method: "POST",
+    body: "ok",
+  });
+
+  expect(response.headers.get("a")).toEqual("b");
+  expect(await response.text()).toEqual("ok");
 });
