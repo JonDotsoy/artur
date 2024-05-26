@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/JonDotsoy/artur/compare/artur-v1.0.0...artur-v1.1.0) (2024-05-26)
+
+
+### Features
+
+* add support for `describeErrorResponse` function in `src/index.ts` ([86f77fc](https://github.com/JonDotsoy/artur/commit/86f77fc641704141f784ec79d0c1b763f8c9f330))
+
 ## 1.0.0 (2024-05-26)
 
 
