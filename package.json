@@ -1,7 +1,7 @@
 {
   "name": "@jondotsoy/artur",
   "description": "Framework to write lite apps",
-  "version": "0.1.9",
+  "version": "1.0.0",
   "type": "module",
   "module": "./lib/esm/index.js",
   "main": "./lib/cjs/index.js",
