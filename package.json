@@ -1,5 +1,5 @@
 {
-  "name": "@jondotsoy/artur",
+  "name": "artur",
   "description": "Framework to write lite apps",
   "version": "1.1.0",
   "type": "module",
@@ -26,6 +26,12 @@
       "require": "./lib/cjs/http/router.js",
       "types": "./lib/types/http/router.d.ts",
       "default": "./lib/esm/http/router.js"
+    },
+    "./http/access-control": {
+      "import": "./lib/esm/http/access-control.js",
+      "require": "./lib/cjs/http/access-control.js",
+      "types": "./lib/types/http/access-control.d.ts",
+      "default": "./lib/esm/http/access-control.js"
     }
   },
   "devDependencies": {
