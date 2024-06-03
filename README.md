@@ -121,3 +121,13 @@ try {
   throw ex;
 }
 ```
+
+## CORS
+
+```ts
+const router = new Router({ middlewares: [cors()] });
+
+router.use("OPTIONS", "/hello", {
+  fetch: () => new Response(null, { status: 204 }),
+});
+```
