@@ -115,7 +115,7 @@ By default, the router catch any error and return a response with status 500. Yo
 try {
   verifyHeaderAuthorization(request.headers.get('authorization'));
 } catch (ex) {
-  if (ex instaceof JWTError) {
+  if (ex instanceof JWTError) {
     describeErrorResponse(ex, new Response(ex.message, {status: 401}));
   }
   throw ex;
@@ -124,6 +124,8 @@ try {
 
 ## CORS
 
+Artur provides built-in support for Cross-Origin Resource Sharing (CORS). To enable CORS, you can use the `cors()` middleware function.
+
 ```ts
 const router = new Router({ middlewares: [cors()] });
 
@@ -131,3 +133,19 @@ router.use("OPTIONS", "/hello", {
   fetch: () => new Response(null, { status: 204 }),
 });
 ```
+
+Note that this will set the `Access-Control-Allow-Origin` header to `*`, allowing requests from any origin. You can also specify a specific origin or origins by passing an options object to the `cors()` function.
+
+For example:
+
+```ts
+const router = new Router({
+  middlewares: [cors({ origin: "https://example.com" })],
+});
+
+router.use("OPTIONS", "/hello", {
+  fetch: () => new Response(null, { status: 204 }),
+});
+```
+
+This will set the `Access-Control-Allow-Origin` header to `https://example.com`, allowing requests only from that specific origin.
