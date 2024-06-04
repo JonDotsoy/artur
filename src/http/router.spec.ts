@@ -290,3 +290,49 @@ test("should attach a http server to Node", async () => {
   expect(response.headers.get("a")).toEqual("b");
   expect(await response.text()).toEqual("ok");
 });
+
+test("should attach a http server to Node pass direct request listener", async () => {
+  const describeHTTPServer = async (server: import("node:http").Server) => {
+    if (!server.listening) {
+      await new Promise((resolve, reject) => {
+        server.addListener("error", reject);
+        server.addListener("listening", resolve);
+      });
+    }
+
+    const address = server.address();
+    const url =
+      typeof address === "object" && address !== null
+        ? new URL(`http://localhost:${address.port}`)
+        : null;
+
+    if (!url) throw new Error("Cannot get the address");
+
+    return { url };
+  };
+
+  await using disposes = disposeWithController();
+  disposes.add(() => {
+    server.close();
+  });
+
+  const http = await import("node:http");
+
+  const router = new Router();
+
+  router.use("POST", "/", {
+    fetch: () => new Response("ok", { headers: { a: "b" } }),
+  });
+
+  const server = http.createServer(router.requestListener).listen();
+
+  const { url } = await describeHTTPServer(server);
+
+  const response = await fetch(`${new URL("/", url)}`, {
+    method: "POST",
+    body: "ok",
+  });
+
+  expect(response.headers.get("a")).toEqual("b");
+  expect(await response.text()).toEqual("ok");
+});
