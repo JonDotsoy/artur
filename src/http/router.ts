@@ -169,12 +169,12 @@ export class Router {
     }
   };
 
-  async requestListener(
+  requestListener = async (
     req: IncomingMessage,
     res: import("http").ServerResponse<import("http").IncomingMessage> & {
       req: import("http").IncomingMessage;
     },
-  ) {
+  ) => {
     const toReadable = (req: IncomingMessage) => {
       if (!req.method || ["GET", "HEAD"].includes(req.method)) return undefined;
       return new ReadableStream({
@@ -226,5 +226,5 @@ export class Router {
     return true;
     // console.log("🚀 ~ Router ~ requestListener ~ url:", url)
     // throw new Error("Method not implemented.");
-  }
+  };
 }
