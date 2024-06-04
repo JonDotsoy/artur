@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/JonDotsoy/artur/compare/artur-v1.1.0...artur-v1.2.0) (2024-06-04)
+
+
+### Features
+
+* add support to cors ([d2e08c0](https://github.com/JonDotsoy/artur/commit/d2e08c09ceff4bca64d83ab30fe48464604506bc))
+* upgrade declaration to Router.requestListener ([ebf4ec6](https://github.com/JonDotsoy/artur/commit/ebf4ec6b40090cd530de2d2f77ae7258007bda16))
+
 ## [1.1.0](https://github.com/JonDotsoy/artur/compare/artur-v1.0.0...artur-v1.1.0) (2024-05-26)
 
 
