@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/JonDotsoy/artur/compare/artur-v1.2.0...artur-v1.2.1) (2024-06-04)
+
+
+### Miscellaneous Chores
+
+* release 1.2.1 ([a34f383](https://github.com/JonDotsoy/artur/commit/a34f383ed539155e1021cb8c78ff694dc84890a0))
+
 ## [1.2.0](https://github.com/JonDotsoy/artur/compare/artur-v1.1.0...artur-v1.2.0) (2024-06-04)
 
 
