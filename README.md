@@ -149,3 +149,7 @@ router.use("OPTIONS", "/hello", {
 ```
 
 This will set the `Access-Control-Allow-Origin` header to `https://example.com`, allowing requests only from that specific origin.
+
+## License
+
+Artur is licensed under the MIT license. See [LICENSE](./LICENSE) for details.
