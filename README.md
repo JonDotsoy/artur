@@ -4,7 +4,7 @@ Artur is a modern web framework for building web applications with ease. It prov
 
 ## Example Usage
 
-On [Bun](https://bun.sh)
+On Bun [https://bun.sh](https://bun.sh)
 
 ```ts
 const router = new Router();
@@ -21,7 +21,7 @@ serve({
 });
 ```
 
-On [NodeJS](https://nodejs.org)
+On NodeJS [https://nodejs.org](https://nodejs.org)
 
 ```ts
 import { createServer } from "node:http";
@@ -52,10 +52,10 @@ npm i @jondotsoy/artur
 
 ## Fetch Router
 
-The `@jondotsoy/artur/http/router` module provides a router manager to handle Request/Response patterns.
+The `artur/http/router` module provides a router manager to handle Request/Response patterns.
 
 ```ts
-import { Router, params } from "@jondotsoy/artur/http/router";
+import { Router, params } from "artur/http/router";
 
 const router = new Router();
 
@@ -73,7 +73,7 @@ expect(await response.text()).toEqual("hello mark");
 
 ## Middleware
 
-Middleware wrap the fetch function and modify the input and output of this function.
+Middleware wraps the fetch function and modifies the input and output of this function.
 
 ```ts
 router.use("GET", "/hello", {
@@ -97,9 +97,9 @@ router.use("GET", "/hello", {
 });
 ```
 
-Methods allow are `GET`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PUT`, `PATCH`. Also you can use `ALL` to match any method.
+Methods allowed are `GET`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PUT`, `PATCH`. You can also use `ALL` to match any method.
 
-The path pattern use the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API) to match the request object. If the path pattern is a string only evaluate the pathname to evaluate the url use a URLPattern object.
+The path pattern uses the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API) to match the request object. If the path pattern is a string, only evaluate the pathname to evaluate the URL; use a URLPattern object otherwise.
 
 ```ts
 router.use("GET", new URLPattern({ protocol: "https", pathname: "/hello" }), {
@@ -109,7 +109,7 @@ router.use("GET", new URLPattern({ protocol: "https", pathname: "/hello" }), {
 
 ## Catch Errors
 
-By default, the router catch any error and return a response with status 500. You can also customize the response related with a error using the `describeErrorResponse` function. The next sample catch a jwt message and response a response with status 401.
+By default, the router catches any error and returns a response with status 500. You can also customize the response related to an error using the `describeErrorResponse` function. The next sample catches a JWT message and responds with a response with status 401.
 
 ```ts
 try {
@@ -134,7 +134,7 @@ router.use("OPTIONS", "/hello", {
 });
 ```
 
-Note that this will set the `Access-Control-Allow-Origin` header to `*`, allowing requests from any origin. You can also specify a specific origin or origins by passing an options object to the `cors()` function.
+Note that this sets the `Access-Control-Allow-Origin` header to `*`, allowing requests from any origin. You can also specify a specific origin or origins by passing an options object to the `cors()` function.
 
 For example:
 
@@ -148,8 +148,9 @@ router.use("OPTIONS", "/hello", {
 });
 ```
 
-This will set the `Access-Control-Allow-Origin` header to `https://example.com`, allowing requests only from that specific origin.
+This sets the `Access-Control-Allow-Origin` header to `https://example.com`, allowing requests only from that specific origin.
 
 ## License
 
 Artur is licensed under the MIT license. See [LICENSE](./LICENSE) for details.
+
