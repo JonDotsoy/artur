@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/JonDotsoy/artur/compare/artur-v1.2.1...artur-v1.2.2) (2025-01-23)
+
+
+### Bug Fixes
+
+* **http/router:** improve request handling and add tests ([b3d95ba](https://github.com/JonDotsoy/artur/commit/b3d95ba0bfe20150e21d4e0e263ab94cbe46be61))
+* TypeError: Can only call ReadableStreamDefaultController.close on instances of ReadableStreamDefaultController ([#7](https://github.com/JonDotsoy/artur/issues/7)) ([425138b](https://github.com/JonDotsoy/artur/commit/425138bd34c2de60412a5378c4e281bf8ca82576))
+
 ## [1.2.1](https://github.com/JonDotsoy/artur/compare/artur-v1.2.0...artur-v1.2.1) (2024-06-04)
 
 
