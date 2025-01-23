@@ -113,10 +113,10 @@ By default, the router catches any error and returns a response with status 500.
 
 ```ts
 try {
-  verifyHeaderAuthorization(request.headers.get('authorization'));
+  verifyHeaderAuthorization(request.headers.get("authorization"));
 } catch (ex) {
   if (ex instanceof JWTError) {
-    describeErrorResponse(ex, new Response(ex.message, {status: 401}));
+    describeErrorResponse(ex, new Response(ex.message, { status: 401 }));
   }
   throw ex;
 }
@@ -153,4 +153,3 @@ This sets the `Access-Control-Allow-Origin` header to `https://example.com`, all
 ## License
 
 Artur is licensed under the MIT license. See [LICENSE](./LICENSE) for details.
-
