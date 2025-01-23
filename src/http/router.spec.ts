@@ -1,7 +1,21 @@
-import { test, expect, mock } from "bun:test";
+import { test, expect, mock, afterEach } from "bun:test";
 import { Router, params } from "./router.js";
 import { disposeWithController } from "dispose-with-controller";
 import { describeErrorResponse } from "../utils/describeErrorResponse.js";
+import { CleanupTasks } from "@jondotsoy/utils-js/cleanuptasks";
+
+const sanatizeHostname = (hostname: string) => {
+  switch (hostname) {
+    case "::":
+    case "::1":
+    case "::1:1":
+    case "127.0.0.1":
+    case "127.0.0.2":
+    case "localhost":
+      return "localhost";
+  }
+  return hostname;
+};
 
 test("should make a router", async () => {
   new Router();
@@ -292,6 +306,9 @@ test("should attach a http server to Node", async () => {
 });
 
 test("should attach a http server to Node pass direct request listener", async () => {
+  await using cleanupTasks = new CleanupTasks();
+  cleanupTasks.add(() => server.close());
+
   const describeHTTPServer = async (server: import("node:http").Server) => {
     if (!server.listening) {
       await new Promise((resolve, reject) => {
@@ -335,4 +352,74 @@ test("should attach a http server to Node pass direct request listener", async (
 
   expect(response.headers.get("a")).toEqual("b");
   expect(await response.text()).toEqual("ok");
+});
+
+test("should attach a http server to Node and get the response", async () => {
+  await using cleanupTasks = new CleanupTasks();
+  cleanupTasks.add(() => server.close());
+
+  const { createServer } = await import("node:http");
+
+  const router = new Router();
+  router.use("GET", "/hi", {
+    fetch: () => Response.json({ ok: true }),
+  });
+
+  const server = createServer(router.requestListener);
+  server.listen();
+
+  const url = await new Promise<URL>((resolve, reject) => {
+    server.addListener("listening", () => {
+      const a = server.address();
+      if (typeof a === "string")
+        return resolve(new URL(sanatizeHostname(a), "http://localhost") as any);
+      if (typeof a === "object" && a !== null)
+        return resolve(
+          new URL(`http://${sanatizeHostname(a.address)}:${a.port}`) as any,
+        );
+      return reject(new Error("Cannot get the address"));
+    });
+  });
+
+  const res = await fetch(new URL("/hi", url) as any);
+
+  expect(res.status).toEqual(200);
+  expect(await res.json()).toEqual({ ok: true });
+});
+
+test("should attach a http server to Node and get the response with POST method", async () => {
+  await using cleanupTasks = new CleanupTasks();
+  cleanupTasks.add(() => server.close());
+
+  const { createServer } = await import("node:http");
+
+  const router = new Router();
+  router.use("POST", "/hi", {
+    fetch: async (req) => Response.json({ data: await req.text() }),
+  });
+
+  const server = createServer(router.requestListener);
+  server.listen();
+
+  const url = await new Promise<URL>((resolve, reject) => {
+    server.addListener("listening", () => {
+      const a = server.address();
+      if (typeof a === "string")
+        return resolve(new URL(sanatizeHostname(a), "http://localhost") as any);
+      if (typeof a === "object" && a !== null)
+        return resolve(
+          new URL(`http://${sanatizeHostname(a.address)}:${a.port}`) as any,
+        );
+      return reject(new Error("Cannot get the address"));
+    });
+  });
+
+  const res = await fetch(new URL("/hi", url) as any, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "ok",
+  });
+
+  expect(res.status).toEqual(200);
+  expect(await res.json()).toEqual({ data: "ok" });
 });

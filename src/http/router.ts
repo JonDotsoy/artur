@@ -176,15 +176,35 @@ export class Router {
     },
   ) => {
     const toReadable = (req: IncomingMessage) => {
+      const cleanupTasks = new Set<() => void>();
+      const cleanup = () => {
+        for (const cleanupTask of cleanupTasks) {
+          cleanupTask();
+          cleanupTasks.delete(cleanupTask);
+        }
+      };
+
       if (!req.method || ["GET", "HEAD"].includes(req.method)) return undefined;
-      return new ReadableStream({
+      return new ReadableStream<Uint8Array>({
         start: (controller) => {
-          req.addListener("data", (chunk) => {
+          const onData = (chunk: number[]) => {
             controller.enqueue(new Uint8Array(chunk));
-          });
-          req.addListener("close", () => {
+          };
+          const onClose = () => {
             controller.close();
+            cleanup();
+          };
+
+          req.addListener("data", onData);
+          req.addListener("close", onClose);
+
+          cleanupTasks.add(() => {
+            req.removeListener("data", onData);
+            req.removeListener("close", onClose);
           });
+        },
+        cancel: (reason) => {
+          cleanup();
         },
       });
     };
