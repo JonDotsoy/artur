@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/JonDotsoy/artur/compare/artur-v1.2.2...artur-v1.2.3) (2025-01-25)
+
+
+### Bug Fixes
+
+* **router:** add error handling options and improve fetch return type ([da0bcd6](https://github.com/JonDotsoy/artur/commit/da0bcd6dd888da7a3b26b5ad2e3495ca5f8f05c0))
+
 ## [1.2.2](https://github.com/JonDotsoy/artur/compare/artur-v1.2.1...artur-v1.2.2) (2025-01-23)
 
 
