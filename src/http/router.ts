@@ -70,12 +70,21 @@ export const defaultCatching = (ex: unknown) => {
   return response;
 };
 
-export type RouterOptions = {
+type ErrorHandler = (ex: unknown) => unknown | Promise<unknown>;
+
+type ReturnFetch<T> = T extends "pass"
+  ? null | Response | Promise<Response>
+  : T extends "default-catching"
+    ? Response | Promise<Response>
+    : T extends ErrorHandler
+      ? Response | Promise<Response> | ReturnType<T> | Promise<ReturnType<T>>
+      : FetcherResponse;
+
+type ErrorHandling = "pass" | "default-catching" | ErrorHandler;
+
+export type RouterOptions<E extends ErrorHandling> = {
   middlewares?: Middleware<any>[];
-  errorHandling:
-    | "pass"
-    | "default-catching"
-    | ((ex: unknown) => Promise<Response>);
+  errorHandling: E;
 };
 
 const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
@@ -89,14 +98,14 @@ const urlPatternFrom = (value: unknown): URLPattern => {
   throw new Error(`Cannot parse URL Pattern to ${value}`);
 };
 
-export class Router {
+export class Router<E extends ErrorHandling = "default-catching"> {
   routes: Route<any>[] = [];
 
-  options: RouterOptions;
+  options: RouterOptions<E>;
 
-  constructor(options?: Partial<RouterOptions>) {
+  constructor(options?: Partial<RouterOptions<E>>) {
     this.options = {
-      errorHandling: "default-catching",
+      errorHandling: "default-catching" as E,
       ...options,
     };
   }
@@ -115,7 +124,7 @@ export class Router {
     return this;
   }
 
-  fetch = async (request: Request) => {
+  fetch = async (request: Request): Promise<ReturnFetch<E>> => {
     const middlewareDecorators: Middleware<any>[] = [
       ...(this.options.middlewares ?? []),
     ];
@@ -149,23 +158,23 @@ export class Router {
           if (route.options?.fetch) {
             const f: FetchDescriptor<any> = route.options.fetch;
             const fetchDecorate = decorate(f, ...middlewareDecorators);
-            return await fetchDecorate(request);
+            return fetchDecorate(request) as ReturnFetch<E>;
           }
         }
       }
 
-      if (this.options.errorHandling === "pass") return null;
+      if (this.options.errorHandling === "pass") return null as ReturnFetch<E>;
 
-      return new Response(null, { status: 404 });
+      return new Response(null, { status: 404 }) as ReturnFetch<E>;
     } catch (ex) {
       if (typeof this.options.errorHandling === "function")
-        return await this.options.errorHandling(ex);
+        return this.options.errorHandling(ex) as ReturnFetch<E>;
 
       if (this.options.errorHandling === "pass") {
         throw ex;
       }
 
-      return await defaultCatching(ex);
+      return defaultCatching(ex) as ReturnFetch<E>;
     }
   };
 
@@ -229,7 +238,7 @@ export class Router {
     });
     const response = await this.fetch(request);
 
-    if (!response) return false;
+    if (!(response instanceof Response)) return false;
 
     res.statusCode = response.status;
     res.statusMessage = response.statusText;
