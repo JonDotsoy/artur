@@ -4,6 +4,7 @@ import { disposeWithController } from "dispose-with-controller";
 import { describeErrorResponse } from "../utils/describeErrorResponse.js";
 import { CleanupTasks } from "@jondotsoy/utils-js/cleanuptasks";
 import { URL } from "url";
+import { expectTypeOf } from "expect-type";
 
 const sanatizeHostname = (hostname: string) => {
   switch (hostname) {
@@ -507,4 +508,36 @@ test("Partial streaming POST request body handling with cancellation", async () 
   expect(await res.json()).toEqual({
     body: "tick 1|",
   });
+});
+
+test("should return a Response when errorHandling is default", async () => {
+  const router = new Router();
+
+  const e = await router.fetch(new Request("http://localhost"));
+
+  expectTypeOf(e).toMatchTypeOf<Response>();
+});
+
+test("should return a Response or null when errorHandling is 'pass'", async () => {
+  const router = new Router({ errorHandling: "pass" });
+
+  const e = await router.fetch(new Request("http://localhost"));
+
+  expectTypeOf(e).toMatchTypeOf<null | Response>();
+});
+
+test("should return a Response or null when errorHandling returns a Response", async () => {
+  const router = new Router({ errorHandling: (ex: any) => Response.json({}) });
+
+  const e = await router.fetch(new Request("http://localhost"));
+
+  expectTypeOf(e).toMatchTypeOf<null | Response>();
+});
+
+test("should return a Response or a number when errorHandling returns a number", async () => {
+  const router = new Router({ errorHandling: (ex: any) => 1 });
+
+  const e = await router.fetch(new Request("http://localhost"));
+
+  expectTypeOf(e).toMatchTypeOf<number | Response>();
 });
