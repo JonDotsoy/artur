@@ -3,6 +3,7 @@ import { Router, params } from "./router.js";
 import { disposeWithController } from "dispose-with-controller";
 import { describeErrorResponse } from "../utils/describeErrorResponse.js";
 import { CleanupTasks } from "@jondotsoy/utils-js/cleanuptasks";
+import { URL } from "url";
 
 const sanatizeHostname = (hostname: string) => {
   switch (hostname) {
@@ -422,4 +423,88 @@ test("should attach a http server to Node and get the response with POST method"
 
   expect(res.status).toEqual(200);
   expect(await res.json()).toEqual({ data: "ok" });
+});
+
+test("Streaming POST request body handling", async () => {
+  const http = await import("node:http");
+
+  const router = new Router();
+
+  router.use("POST", "/", {
+    fetch: async (req) => Response.json({ body: await req.text() }),
+  });
+
+  const server = http.createServer(router.requestListener).listen();
+
+  const serverUrl = await new Promise<URL>((resolve, reject) => {
+    server.addListener("error", reject);
+    server.addListener("listening", () =>
+      resolve(new URL(`http://localhost:${(server.address() as any).port}`)),
+    );
+  });
+
+  const body = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(new TextEncoder().encode("tick 1|"));
+      await new Promise((r) => setTimeout(r, 200));
+      controller.enqueue(new TextEncoder().encode("tick 2|"));
+      await new Promise((r) => setTimeout(r, 200));
+      controller.close();
+    },
+  });
+
+  const res = await fetch(new URL("/", serverUrl).toString(), {
+    method: "POST",
+    body,
+  });
+
+  expect(res.status).toEqual(200);
+  expect(await res.json()).toEqual({
+    body: "tick 1|tick 2|",
+  });
+});
+
+test("Partial streaming POST request body handling with cancellation", async () => {
+  const http = await import("node:http");
+
+  const router = new Router();
+
+  router.use("POST", "/", {
+    fetch: async (req) => {
+      const bodyReadable = req.body!.getReader();
+      const e = await bodyReadable.read();
+      await bodyReadable.cancel();
+      const text = new TextDecoder().decode(new Uint8Array(e.value));
+      return Response.json({ body: text });
+    },
+  });
+
+  const server = http.createServer(router.requestListener).listen();
+
+  const serverUrl = await new Promise<URL>((resolve, reject) => {
+    server.addListener("error", reject);
+    server.addListener("listening", () =>
+      resolve(new URL(`http://localhost:${(server.address() as any).port}`)),
+    );
+  });
+
+  const body = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(new TextEncoder().encode("tick 1|"));
+      await new Promise((r) => setTimeout(r, 200));
+      controller.enqueue(new TextEncoder().encode("tick 2|"));
+      await new Promise((r) => setTimeout(r, 200));
+      controller.close();
+    },
+  });
+
+  const res = await fetch(new URL("/", serverUrl).toString(), {
+    method: "POST",
+    body,
+  });
+
+  expect(res.status).toEqual(200);
+  expect(await res.json()).toEqual({
+    body: "tick 1|",
+  });
 });
