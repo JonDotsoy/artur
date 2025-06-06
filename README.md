@@ -1,79 +1,78 @@
 # Artur
 
-Artur is a modern web framework for building web applications with ease. It provides a powerful router system, middleware support, and an easy-to-use API.
+Artur is a lightweight web framework for building HTTP services with minimal setup. It features a URLPattern based router, a simple middleware layer and runs on both **Node.js** and **Bun**.
 
-## Example Usage
+## Features
 
-On Bun [https://bun.sh](https://bun.sh)
+- Declarative router built on top of the URLPattern API
+- Middleware support for request and response processing
+- Works with Node.js and Bun
+- Helpers for error handling and CORS
+- Fully typed when used with TypeScript
+
+## Installation
+
+Install Artur using npm:
+
+```bash
+npm install artur
+```
+
+## Quick Start
+
+### Using Bun
 
 ```ts
+import { Router, serve } from "artur";
+
 const router = new Router();
 
 router.use("GET", "/hello", {
-  fetch: (request) => new Response("Hello world"),
+  fetch: () => new Response("Hello world"),
 });
 
 serve({
   port: 3000,
-  fetch(request) {
-    return router.fetch(request);
-  },
+  fetch: (request) => router.fetch(request),
 });
 ```
 
-On NodeJS [https://nodejs.org](https://nodejs.org)
+### Using Node.js
 
 ```ts
 import { createServer } from "node:http";
+import { Router } from "artur";
 
 const router = new Router();
 
 router.use("GET", "/hello", {
-  fetch: (request) => new Response("Hello world"),
+  fetch: () => new Response("Hello world"),
 });
 
 const server = createServer((req, res) => {
   router.requestListener(req, res);
 });
 
-// starts a simple http server locally on port 3000
 server.listen(3000, "127.0.0.1", () => {
   console.log("Listening on 127.0.0.1:3000");
 });
 ```
 
-## Installation
+## Router API
 
-To install Artur, simply run the following command in your terminal:
-
-```shell
-npm i @jondotsoy/artur
-```
-
-## Fetch Router
-
-The `artur/http/router` module provides a router manager to handle Request/Response patterns.
+Register a new route using `router.use(method, path, options)`.
 
 ```ts
-import { Router, params } from "artur/http/router";
-
-const router = new Router();
-
-router.use("GET", "/users/:name", {
-  fetch: async (request) => {
-    const { name } = params(request);
-    return new Response(`hello ${name}`);
-  },
+router.use("GET", "/hello", {
+  fetch: () => new Response("ok"),
 });
-
-const response = await router.fetch(new Request("http://localhost/users/mark"));
-
-expect(await response.text()).toEqual("hello mark");
 ```
+
+The path accepts a string or a `URLPattern` instance and an optional `test` function for extra conditions.
 
 ## Middleware
 
-Middleware wraps the fetch function and modifies the input and output of this function.
+Middleware wraps a fetch handler so you can modify the request or response.
 
 ```ts
 router.use("GET", "/hello", {
@@ -83,33 +82,13 @@ router.use("GET", "/hello", {
       return response;
     },
   ],
-  fetch: (request) => new Response("ok"),
+  fetch: () => new Response("ok"),
 });
 ```
 
-## Router
+## Error Handling
 
-The route describes how to match a request object. To describe a route, use the API `Router.prototype.use(method: string, path_pattern: string)`.
-
-```ts
-router.use("GET", "/hello", {
-  fetch: (request) => new Response("ok"),
-});
-```
-
-Methods allowed are `GET`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PUT`, `PATCH`. You can also use `ALL` to match any method.
-
-The path pattern uses the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API) to match the request object. If the path pattern is a string, only evaluate the pathname to evaluate the URL; use a URLPattern object otherwise.
-
-```ts
-router.use("GET", new URLPattern({ protocol: "https", pathname: "/hello" }), {
-  fetch: (request) => new Response("ok"),
-});
-```
-
-## Catch Errors
-
-By default, the router catches any error and returns a response with status 500. You can also customize the response related to an error using the `describeErrorResponse` function. The next sample catches a JWT message and responds with a response with status 401.
+The router automatically catches errors and returns a `500` response. You can customize error handling with `describeErrorResponse` or by providing your own handler.
 
 ```ts
 try {
@@ -122,11 +101,13 @@ try {
 }
 ```
 
-## CORS
+## Cross-Origin Resource Sharing (CORS)
 
-Artur provides built-in support for Cross-Origin Resource Sharing (CORS). To enable CORS, you can use the `cors()` middleware function.
+Use the `cors()` middleware to enable CORS.
 
 ```ts
+import { cors, Router } from "artur";
+
 const router = new Router({ middlewares: [cors()] });
 
 router.use("OPTIONS", "/hello", {
@@ -134,9 +115,7 @@ router.use("OPTIONS", "/hello", {
 });
 ```
 
-Note that this sets the `Access-Control-Allow-Origin` header to `*`, allowing requests from any origin. You can also specify a specific origin or origins by passing an options object to the `cors()` function.
-
-For example:
+Specify an origin if needed:
 
 ```ts
 const router = new Router({
@@ -147,8 +126,6 @@ router.use("OPTIONS", "/hello", {
   fetch: () => new Response(null, { status: 204 }),
 });
 ```
-
-This sets the `Access-Control-Allow-Origin` header to `https://example.com`, allowing requests only from that specific origin.
 
 ## License
 
