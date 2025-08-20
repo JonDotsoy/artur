@@ -11,6 +11,25 @@ Artur is a lightweight web framework for building HTTP services with minimal set
 - Helpers for error handling and CORS
 - Fully typed when used with TypeScript
 
+## Why this exists
+
+Artur was designed to be a truly **infrastructure-agnostic** router that works seamlessly across different JavaScript runtimes and frameworks without being tied to any specific server implementation. Unlike traditional frameworks that lock you into their ecosystem, Artur provides a lightweight, flexible routing solution that can be integrated anywhere you need it.
+
+### Framework Independence
+
+- **Runtime Agnostic**: Works natively with Node.js, Bun, Deno, and any JavaScript runtime that supports the Web API standards
+- **Framework Flexible**: Can be integrated into existing Express.js, NestJS applications, or used standalone without any framework overhead
+- **Standard-Based**: Built on Web APIs like `URLPattern`, `Request`, and `Response` - no proprietary abstractions
+
+### Key Advantages
+
+- **Minimal Dependencies**: No heavy framework baggage - just the routing logic you need
+- **Easy Integration**: Drop it into any existing project without architectural changes
+- **Performance First**: Lightweight design with minimal overhead and fast request handling
+- **Future-Proof**: Built on web standards that will remain stable across platforms and runtimes
+
+Whether you're building a microservice, adding routing to an existing application, or creating a new web service, Artur provides the routing capabilities without dictating your infrastructure choices.
+
 ## Installation
 
 Install Artur using npm:
