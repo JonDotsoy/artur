@@ -165,7 +165,7 @@ const rpc = new JsonRpcSessionManager({
 
 #### Available Options
 
-- **`sseEnabled`** (`boolean`, default: `false`): Enables Server-Sent Events (SSE) support for GET requests. When enabled, GET requests to the JSON-RPC endpoint will return a streaming response that can receive real-time updates.
+- **`sseEnabled`** (`boolean`, default: `false`): Enables Server-Sent Events (SSE) support for GET requests. When enabled, GET requests to the JSON-RPC endpoint will return a streaming response that can receive real-time updates. ⚠️ **This is an experimental feature.**
 
 ### Multiple Transport Methods
 
@@ -197,7 +197,7 @@ const response = await fetch("/api/rpc", {
 });
 ```
 
-#### GET - Server-Sent Events (Real-time streaming)
+#### GET - Server-Sent Events (Real-time streaming) ⚠️ Experimental
 
 ```ts
 // First, enable SSE support when creating the session manager
