@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.0](https://github.com/JonDotsoy/artur/compare/artur-v1.3.1...artur-v1.4.0) (2025-08-20)
+
+
+### Features
+
+* implement DataEventSource and DataEventSourceEncoder for event handling ([f573452](https://github.com/JonDotsoy/artur/commit/f573452d7545f0887f5ac79aa025d11cd12f7cab))
+* implement Server-Sent Events support with DataEventSourceEncoder ([#22](https://github.com/JonDotsoy/artur/issues/22)) ([1ed2736](https://github.com/JonDotsoy/artur/commit/1ed2736e245494e15466d263b85063d12d32bd8e))
+* integrate DataEventSourceEncoder for enhanced event streaming ([021cc07](https://github.com/JonDotsoy/artur/commit/021cc071f88f9db788e89c3404531a015fd820bb))
+
 ## [1.3.1](https://github.com/JonDotsoy/artur/compare/artur-v1.3.0...artur-v1.3.1) (2025-08-20)
 
 
