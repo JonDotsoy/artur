@@ -8,6 +8,7 @@ import type {
 import { JsonRpcError } from "./types.js";
 import { z } from "zod";
 import { Router, type RouterOptionsDef } from "../http/router.js";
+import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.js";
 
 const jsonRpcRequestSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -155,9 +156,9 @@ export class JsonRpcSessionManager {
           start: (controller) => {
             unsub = this.subscribe((response) => {
               controller.enqueue(
-                new TextEncoder().encode(
-                  `data: ${JSON.stringify(response)}\n\n`,
-                ),
+                new DataEventSourceEncoder().encode({
+                  data: JSON.stringify(response),
+                }),
               );
             });
           },
@@ -166,7 +167,13 @@ export class JsonRpcSessionManager {
           },
         });
 
-        return new Response(readable);
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        });
       }
 
       return new Response("Method not allowed", { status: 405 });
