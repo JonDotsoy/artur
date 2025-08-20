@@ -3,6 +3,8 @@ import { type Decorator, type Descriptor, decorate } from "@jondotsoy/decorate";
 import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
 
+const customOptionsSymbol = Symbol("Router.customOptions");
+
 type HTTPMethods =
   | "GET"
   | "POST"
@@ -47,15 +49,18 @@ export type FetchDescriptor<T> = Descriptor<
 
 export type Middleware<T> = Decorator<FetchDescriptor<T>>;
 
+export type RouterOptionsDef<T> = {
+  /** The test function */
+  test?: (request: Request) => Promise<boolean> | boolean;
+  middlewares?: Middleware<T>[];
+  fetch?: (request: RequestWithParams<T>) => FetcherResponse;
+  [customOptionsSymbol]?: Partial<RouterOptionsDef<T>>;
+};
+
 export type Route<T> = {
   method: "ALL" | HTTPMethods;
   urlPattern: URLPattern;
-  options?: {
-    /** The test function */
-    test?: (request: Request) => Promise<boolean> | boolean;
-    middlewares?: Middleware<T>[];
-    fetch?: (request: RequestWithParams<T>) => FetcherResponse;
-  };
+  options?: RouterOptionsDef<T>;
 };
 
 export const defaultCatching = (ex: unknown) => {
@@ -99,6 +104,8 @@ const urlPatternFrom = (value: unknown): URLPattern => {
 };
 
 export class Router<E extends ErrorHandling = "default-catching"> {
+  static customOptions = customOptionsSymbol;
+
   routes: Route<any>[] = [];
 
   options: RouterOptions<E>;
@@ -118,7 +125,10 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     this.routes.push({
       method,
       urlPattern: urlPatternFrom(urlPatternOrPathPattern),
-      options,
+      options:
+        options && customOptionsSymbol in options
+          ? options[customOptionsSymbol]
+          : options,
     });
 
     return this;
