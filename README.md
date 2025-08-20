@@ -6,6 +6,7 @@ Artur is a lightweight web framework for building HTTP services with minimal set
 
 - Declarative router built on top of the URLPattern API
 - Middleware support for request and response processing
+- **JSON-RPC 2.0 protocol support** with session management
 - Works with Node.js and Bun
 - Helpers for error handling and CORS
 - Fully typed when used with TypeScript
@@ -125,6 +126,139 @@ const router = new Router({
 router.use("OPTIONS", "/hello", {
   fetch: () => new Response(null, { status: 204 }),
 });
+```
+
+## JSON-RPC 2.0 Support
+
+Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcSessionManager` class. This enables you to build real-time applications with remote procedure calls.
+
+### Basic JSON-RPC Setup
+
+```ts
+import { JsonRpcSessionManager, Router } from "artur";
+
+const rpc = new JsonRpcSessionManager();
+
+// Register RPC methods
+rpc.use("add", (params: { a: number; b: number }) => {
+  return params.a + params.b;
+});
+
+rpc.use("greet", (params: { name: string }) => {
+  return `Hello, ${params.name}!`;
+});
+
+// Integrate with Router
+const router = new Router();
+router.use("POST", "/api/rpc", rpc);
+```
+
+### Multiple Transport Methods
+
+JSON-RPC supports different HTTP methods for various use cases:
+
+#### POST - Standard JSON-RPC (Single & Batch)
+
+```ts
+// Single request
+const response = await fetch("/api/rpc", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "add",
+    params: { a: 5, b: 3 },
+  }),
+});
+
+// Batch requests
+const response = await fetch("/api/rpc", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify([
+    { jsonrpc: "2.0", id: 1, method: "add", params: { a: 5, b: 3 } },
+    { jsonrpc: "2.0", id: 2, method: "greet", params: { name: "Alice" } },
+  ]),
+});
+```
+
+#### GET - Server-Sent Events (Real-time streaming)
+
+```ts
+const eventSource = new EventSource("/api/rpc");
+eventSource.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  console.log("RPC Response:", response);
+};
+```
+
+#### PUT - Fire-and-forget requests
+
+```ts
+// Send request without waiting for response
+fetch("/api/rpc", {
+  method: "PUT",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "logEvent",
+    params: { event: "user_login" },
+  }),
+});
+```
+
+### Direct Usage (without Router)
+
+```ts
+const rpc = new JsonRpcSessionManager();
+
+rpc.use("calculate", (params: { operation: string; values: number[] }) => {
+  switch (params.operation) {
+    case "sum":
+      return params.values.reduce((a, b) => a + b, 0);
+    case "multiply":
+      return params.values.reduce((a, b) => a * b, 1);
+    default:
+      throw new JsonRpcError(-32602, "Invalid operation");
+  }
+});
+
+// Direct request handling
+const result = await rpc.request({
+  jsonrpc: "2.0",
+  id: 1,
+  method: "calculate",
+  params: { operation: "sum", values: [1, 2, 3, 4, 5] },
+});
+```
+
+### Error Handling
+
+```ts
+import { JsonRpcError } from "artur";
+
+rpc.use("divide", (params: { a: number; b: number }) => {
+  if (params.b === 0) {
+    throw new JsonRpcError(-32603, "Division by zero", {
+      code: "DIVISION_BY_ZERO",
+    });
+  }
+  return params.a / params.b;
+});
+```
+
+### Real-time Subscriptions
+
+```ts
+// Subscribe to responses
+const unsubscribe = rpc.subscribe((response) => {
+  console.log("New response:", response);
+});
+
+// Clean up when done
+unsubscribe();
 ```
 
 ## License
