@@ -181,6 +181,9 @@ describe("JsonRpcSessionManager", () => {
     ]);
   });
   test("should stream JSON-RPC responses via Server-Sent Events when using GET and PUT requests", async () => {
+    session = new JsonRpcSessionManager({
+      sseEnabled: true,
+    });
     const pushChunk = mock((chunk: any) => {});
     const pending = Promise.withResolvers<void>();
 
