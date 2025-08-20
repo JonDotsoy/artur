@@ -21,10 +21,23 @@ const bodyRequest = z.union([
   z.array(jsonRpcRequestSchema),
 ]);
 
+type Options = {
+  sseEnabled: boolean;
+};
+
 export class JsonRpcSessionManager {
   private handlers = new Map<string, JsonRpcHandler>();
   private subscribers = new Set<(response: JsonRpcResponse) => void>();
   private requests = new Set<Promise<JsonRpcResponse>>();
+
+  private options: Options;
+
+  constructor(options?: Partial<Options>) {
+    this.options = {
+      sseEnabled: false,
+      ...options,
+    };
+  }
 
   async stop() {
     await Promise.allSettled(this.requests);
@@ -128,7 +141,7 @@ export class JsonRpcSessionManager {
         );
       }
 
-      if (method === "GET") {
+      if (this.options.sseEnabled && method === "GET") {
         let unsub: () => void;
         const readable = new ReadableStream<Uint8Array>({
           start: (controller) => {
