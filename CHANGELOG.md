@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/JonDotsoy/artur/compare/artur-v1.3.0...artur-v1.3.1) (2025-08-20)
+
+
+### Miscellaneous Chores
+
+* release 1.3.1 ([64fcede](https://github.com/JonDotsoy/artur/commit/64fcede014d47a0c580d339fd2367d58f13e2913))
+
 ## [1.3.0](https://github.com/JonDotsoy/artur/compare/artur-v1.2.3...artur-v1.3.0) (2025-08-20)
 
 
