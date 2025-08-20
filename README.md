@@ -153,6 +153,20 @@ const router = new Router();
 router.use("POST", "/api/rpc", rpc);
 ```
 
+### Configuration Options
+
+The `JsonRpcSessionManager` accepts configuration options to customize its behavior:
+
+```ts
+const rpc = new JsonRpcSessionManager({
+  sseEnabled: true, // Enable Server-Sent Events support for GET requests
+});
+```
+
+#### Available Options
+
+- **`sseEnabled`** (`boolean`, default: `false`): Enables Server-Sent Events (SSE) support for GET requests. When enabled, GET requests to the JSON-RPC endpoint will return a streaming response that can receive real-time updates. ⚠️ **This is an experimental feature.**
+
 ### Multiple Transport Methods
 
 JSON-RPC supports different HTTP methods for various use cases:
@@ -183,9 +197,15 @@ const response = await fetch("/api/rpc", {
 });
 ```
 
-#### GET - Server-Sent Events (Real-time streaming)
+#### GET - Server-Sent Events (Real-time streaming) ⚠️ Experimental
 
 ```ts
+// First, enable SSE support when creating the session manager
+const rpc = new JsonRpcSessionManager({
+  sseEnabled: true,
+});
+
+// Then connect to the stream
 const eventSource = new EventSource("/api/rpc");
 eventSource.onmessage = (event) => {
   const response = JSON.parse(event.data);

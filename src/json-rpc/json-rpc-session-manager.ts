@@ -21,10 +21,31 @@ const bodyRequest = z.union([
   z.array(jsonRpcRequestSchema),
 ]);
 
+type Options = {
+  sseEnabled: boolean;
+};
+
 export class JsonRpcSessionManager {
+  private static sseWarningDisplayed = true;
   private handlers = new Map<string, JsonRpcHandler>();
   private subscribers = new Set<(response: JsonRpcResponse) => void>();
   private requests = new Set<Promise<JsonRpcResponse>>();
+
+  private options: Options;
+
+  constructor(options?: Partial<Options>) {
+    this.options = {
+      sseEnabled: false,
+      ...options,
+    };
+
+    if (this.options.sseEnabled && JsonRpcSessionManager.sseWarningDisplayed) {
+      console.warn(
+        "Warning: SSE support is experimental and should be used with caution.",
+      );
+      JsonRpcSessionManager.sseWarningDisplayed = false;
+    }
+  }
 
   async stop() {
     await Promise.allSettled(this.requests);
@@ -128,7 +149,7 @@ export class JsonRpcSessionManager {
         );
       }
 
-      if (method === "GET") {
+      if (this.options.sseEnabled && method === "GET") {
         let unsub: () => void;
         const readable = new ReadableStream<Uint8Array>({
           start: (controller) => {
