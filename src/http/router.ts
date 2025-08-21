@@ -2,19 +2,8 @@ import { URLPattern } from "urlpattern-polyfill";
 import { type Decorator, type Descriptor, decorate } from "@jondotsoy/decorate";
 import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
-
-const customOptionsSymbol = Symbol("Router.customOptions");
-
-type HTTPMethods =
-  | "GET"
-  | "POST"
-  | "PUT"
-  | "HEAD"
-  | "DELETE"
-  | "PATCH"
-  | "OPTIONS"
-  | "CONNECT"
-  | "TRACE";
+import type { HTTPMethods } from "./types/http-methods-types.js";
+import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
 
 const mapRequestParamas = new WeakMap<
   Request,
@@ -265,5 +254,9 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     return true;
     // console.log("🚀 ~ Router ~ requestListener ~ url:", url)
     // throw new Error("Method not implemented.");
+  };
+
+  [customOptionsSymbol] = {
+    fetch: this.fetch,
   };
 }
