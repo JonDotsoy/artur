@@ -4,6 +4,7 @@ import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
 import type { HTTPMethods } from "./types/http-methods-types.js";
 import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
+import type { Fetch } from "./types/fetch-type.js";
 
 const mapRequestParamas = new WeakMap<
   Request,
@@ -27,22 +28,20 @@ export type LikePromise<T> = Promise<T> | T;
 
 export type FetcherResponse = LikePromise<Response | null>;
 
-export type MiddlewareWrapResponse = (
-  response: Response,
-) => LikePromise<Response>;
+export type MiddlewareWrapResponse = (response: Response) => Promise<Response>;
 
 export type FetchDescriptor<T> = Descriptor<
-  [request: RequestWithParams<T>],
-  FetcherResponse
+  [request: Request],
+  Promise<Response>
 >;
 
-export type Middleware<T> = Decorator<FetchDescriptor<T>>;
+export type Middleware<T> = Decorator<Fetch>;
 
 export type RouterOptionsDef<T> = {
   /** The test function */
   test?: (request: Request) => Promise<boolean> | boolean;
   middlewares?: Middleware<T>[];
-  fetch?: (request: RequestWithParams<T>) => FetcherResponse;
+  fetch?: Fetch;
   [customOptionsSymbol]?: Partial<RouterOptionsDef<T>>;
 };
 
@@ -64,8 +63,9 @@ export const defaultCatching = (ex: unknown) => {
   return response;
 };
 
-type ErrorHandler = (ex: unknown) => unknown | Promise<unknown>;
+type ErrorHandler = (ex: unknown) => Promise<Response> | Response;
 
+/** @deprecated */
 type ReturnFetch<T> = T extends "pass"
   ? null | Response | Promise<Response>
   : T extends "default-catching"
@@ -123,7 +123,7 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     return this;
   }
 
-  fetch = async (request: Request): Promise<ReturnFetch<E>> => {
+  fetch: Fetch = async (request: Request): Promise<Response> => {
     const middlewareDecorators: Middleware<any>[] = [
       ...(this.options.middlewares ?? []),
     ];
@@ -155,25 +155,29 @@ export class Router<E extends ErrorHandling = "default-catching"> {
           }
 
           if (route.options?.fetch) {
-            const f: FetchDescriptor<any> = route.options.fetch;
+            const f: Fetch = route.options.fetch;
             const fetchDecorate = decorate(f, ...middlewareDecorators);
-            return fetchDecorate(request) as ReturnFetch<E>;
+            return await fetchDecorate(request);
           }
         }
       }
 
-      if (this.options.errorHandling === "pass") return null as ReturnFetch<E>;
+      if (this.options.errorHandling === "pass") {
+        throw new Error(
+          'The "pass" error handler is deprecated and should not be used. Request was not handled.',
+        );
+      }
 
-      return new Response(null, { status: 404 }) as ReturnFetch<E>;
+      return new Response(null, { status: 404 });
     } catch (ex) {
       if (typeof this.options.errorHandling === "function")
-        return this.options.errorHandling(ex) as ReturnFetch<E>;
+        return this.options.errorHandling(ex);
 
       if (this.options.errorHandling === "pass") {
         throw ex;
       }
 
-      return defaultCatching(ex) as ReturnFetch<E>;
+      return defaultCatching(ex);
     }
   };
 
