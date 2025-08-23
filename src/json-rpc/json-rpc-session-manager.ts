@@ -7,7 +7,8 @@ import type {
 } from "./types.js";
 import { JsonRpcError } from "./types.js";
 import { z } from "zod";
-import { Router, type RouterOptionsDef } from "../http/router.js";
+import { Router } from "../http/router.js";
+import { type RouterOptionsDef } from "../http/types/router-options-def.js";
 import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.js";
 
 const jsonRpcRequestSchema = z.object({

@@ -1,10 +1,11 @@
-import { URLPattern } from "urlpattern-polyfill";
-import { type Decorator, type Descriptor, decorate } from "@jondotsoy/decorate";
+import { type Descriptor, decorate } from "@jondotsoy/decorate";
 import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
-import type { HTTPMethods } from "./types/http-methods-types.js";
 import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
 import type { Fetch } from "./types/fetch-type.js";
+import { urlPatternFrom } from "./utils/url-pattern-from.js";
+import type { Route } from "./types/route.js";
+import type { Middleware } from "./types/middleware.js";
 
 const mapRequestParamas = new WeakMap<
   Request,
@@ -34,22 +35,6 @@ export type FetchDescriptor<T> = Descriptor<
   [request: Request],
   Promise<Response>
 >;
-
-export type Middleware<T> = Decorator<Fetch>;
-
-export type RouterOptionsDef<T> = {
-  /** The test function */
-  test?: (request: Request) => Promise<boolean> | boolean;
-  middlewares?: Middleware<T>[];
-  fetch?: Fetch;
-  [customOptionsSymbol]?: Partial<RouterOptionsDef<T>>;
-};
-
-export type Route<T> = {
-  method: "ALL" | HTTPMethods;
-  urlPattern: URLPattern;
-  options?: RouterOptionsDef<T>;
-};
 
 export const defaultCatching = (ex: unknown) => {
   const { response, options } = errorToResponse(ex);
@@ -86,12 +71,6 @@ const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
   return variables;
 };
 
-const urlPatternFrom = (value: unknown): URLPattern => {
-  if (typeof value === "string") return new URLPattern({ pathname: value });
-  if (value instanceof URLPattern) return value;
-  throw new Error(`Cannot parse URL Pattern to ${value}`);
-};
-
 export class Router<E extends ErrorHandling = "default-catching"> {
   static customOptions = customOptionsSymbol;
 
@@ -111,14 +90,16 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     urlPatternOrPathPattern: Route<T>["urlPattern"] | string,
     options?: Route<T>["options"],
   ) {
+    const e_options =
+      options && customOptionsSymbol in options
+        ? options[customOptionsSymbol]
+        : options;
+
     this.routes.push({
       method,
       urlPattern: urlPatternFrom(urlPatternOrPathPattern),
-      options:
-        options && customOptionsSymbol in options
-          ? options[customOptionsSymbol]
-          : options,
-    });
+      options: e_options,
+    } satisfies Route<any>);
 
     return this;
   }

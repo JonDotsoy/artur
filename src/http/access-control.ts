@@ -1,4 +1,4 @@
-import type { Middleware } from "./router.js";
+import type { Middleware } from "./types/middleware.js";
 
 type methods =
   | "CONNECT"
