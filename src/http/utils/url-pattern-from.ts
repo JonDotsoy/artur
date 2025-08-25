@@ -1,4 +1,4 @@
-import { URLPattern } from "urlpattern-polyfill/urlpattern";
+import { URLPattern } from "urlpattern-polyfill";
 
 /**
  * Converts a given value to a `URLPattern` instance.
