@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/JonDotsoy/artur/compare/artur-v1.4.0...artur-v1.5.0) (2025-08-25)
+
+
+### Features
+
+* add ArgumentsError and RouterError classes for improved error handling ([dec19ac](https://github.com/JonDotsoy/artur/commit/dec19acd54725cf13659414a90fc40e00e8a7902))
+* add types for Middleware, Route, and RouterOptionsDef ([e778edf](https://github.com/JonDotsoy/artur/commit/e778edf3726a06e035ee8ffad9abaea400281529))
+* add urlParamsSymbol constant for URL parameter handling ([f048d7f](https://github.com/JonDotsoy/artur/commit/f048d7f4b4656f8b7fcdc3e782865807eb834dca))
+* enhance type definitions for Middleware and Route, add TestRoute and URLParams types ([bad9321](https://github.com/JonDotsoy/artur/commit/bad9321a5d8eab93806240eef52357695506df24))
+* implement RequestReflect class and enhance argument parsing with validation ([d8de4bb](https://github.com/JonDotsoy/artur/commit/d8de4bb2c80f65659a2a22a82f8634b0c076bf81))
+* implement Route class for HTTP routing with test and fetch logic ([79430e1](https://github.com/JonDotsoy/artur/commit/79430e1086b75365332f3eb43827c10579a028f6))
+
 ## [1.4.0](https://github.com/JonDotsoy/artur/compare/artur-v1.3.1...artur-v1.4.0) (2025-08-20)
 
 
