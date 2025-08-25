@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/JonDotsoy/artur/compare/artur-v1.5.0...artur-v1.5.1) (2025-08-25)
+
+
+### Bug Fixes
+
+* update URLPattern import paths for consistency ([a13346e](https://github.com/JonDotsoy/artur/commit/a13346eed0cddcd4e0886524d3f6930c72747af8))
+
 ## [1.5.0](https://github.com/JonDotsoy/artur/compare/artur-v1.4.0...artur-v1.5.0) (2025-08-25)
 
 
