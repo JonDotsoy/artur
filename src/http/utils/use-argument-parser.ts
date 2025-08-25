@@ -2,7 +2,7 @@ import { URLPattern } from "urlpattern-polyfill/urlpattern";
 import { urlPatternFrom } from "./url-pattern-from.js";
 import type { Fetch } from "../types/fetch-type.js";
 import { ArgumentsError } from "../errors/arguments-error.js";
-import { symbol, z } from "zod";
+import { z } from "zod";
 import { Route } from "../route.js";
 import type { Middleware } from "../types/middleware.js";
 import { RequestReflect } from "./request-reflect.js";

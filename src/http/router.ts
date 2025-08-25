@@ -114,36 +114,6 @@ export class Router<E extends ErrorHandling = "default-catching"> {
           const fetchDecorate = decorate(fetch, ...middlewareDecorators);
           return await fetchDecorate(request);
         }
-
-        // let urlPatternResult: URLPatternResult | null;
-        // const matchMethod =
-        //   route.method === "ALL" || route.method === request.method;
-
-        // const extraTestValidation =
-        //   (await route.options?.test?.(request)) ?? true;
-        // if (
-        //   matchMethod &&
-        //   (urlPatternResult = route.urlPattern.exec(request.url)) &&
-        //   extraTestValidation
-        // ) {
-        //   mapRequestParamas.set(request, {
-        //     ...groupURLPatternComponentResult(urlPatternResult.protocol),
-        //     ...groupURLPatternComponentResult(urlPatternResult.username),
-        //     ...groupURLPatternComponentResult(urlPatternResult.password),
-        //     ...groupURLPatternComponentResult(urlPatternResult.hostname),
-        //     ...groupURLPatternComponentResult(urlPatternResult.hash),
-        //     ...groupURLPatternComponentResult(urlPatternResult.pathname),
-        //   });
-
-        //   if (route.options?.middlewares) {
-        //     middlewareDecorators.push(...route.options.middlewares);
-        //   }
-        //   if (route.options?.fetch) {
-        //     const f: Fetch = route.options.fetch;
-        //     const fetchDecorate = decorate(f, ...middlewareDecorators);
-        //     return await fetchDecorate(request);
-        //   }
-        // }
       }
 
       if (this.options.errorHandling === "pass") {
