@@ -50,7 +50,7 @@
     "@jondotsoy/decorate": "^0.1.4",
     "@jondotsoy/symbol.initialize": "^0.1.2",
     "urlpattern-polyfill": "^10.0.0",
-    "zod": "^4.0.17"
+    "zod": "^4.1.0"
   },
   "scripts": {
     "prepack": "make build",

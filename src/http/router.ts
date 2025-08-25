@@ -1,21 +1,21 @@
-import { URLPattern } from "urlpattern-polyfill";
-import { type Decorator, type Descriptor, decorate } from "@jondotsoy/decorate";
+import { type Descriptor, decorate } from "@jondotsoy/decorate";
 import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
+import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
+import type { Fetch } from "./types/fetch-type.js";
+import { urlPatternFrom } from "./utils/url-pattern-from.js";
+import type { Route as DeprecatedRoute } from "./types/route.js";
+import type { Middleware } from "./types/middleware.js";
+import { Route } from "./route.js";
+import {
+  useArgumentParser,
+  type UseArguments,
+} from "./utils/use-argument-parser.js";
+import { RequestReflect } from "./utils/request-reflect.js";
+import type { URLParams } from "./types/url-params.js";
+import { urlParamsSymbol } from "./constants/url-params-symbol.js";
 
-const customOptionsSymbol = Symbol("Router.customOptions");
-
-type HTTPMethods =
-  | "GET"
-  | "POST"
-  | "PUT"
-  | "HEAD"
-  | "DELETE"
-  | "PATCH"
-  | "OPTIONS"
-  | "CONNECT"
-  | "TRACE";
-
+/** @deprecated */
 const mapRequestParamas = new WeakMap<
   Request,
   Record<string, string | undefined>
@@ -25,12 +25,8 @@ type P<T> = T extends string
   ? Record<T, string>
   : Record<string, undefined | string>;
 
-export const params = <T>(request: RequestWithParams<T>): P<T> => {
-  const paramsFound = mapRequestParamas.get(request);
-
-  if (!paramsFound) throw new Error(`Missing params`);
-
-  return paramsFound as P<T>;
+export const params = (request: Request) => {
+  return RequestReflect.get<URLParams>(request, urlParamsSymbol) ?? {};
 };
 
 export type RequestWithParams<T> = Request & { ["[[[s]]]"]?: T };
@@ -38,30 +34,12 @@ export type LikePromise<T> = Promise<T> | T;
 
 export type FetcherResponse = LikePromise<Response | null>;
 
-export type MiddlewareWrapResponse = (
-  response: Response,
-) => LikePromise<Response>;
+export type MiddlewareWrapResponse = (response: Response) => Promise<Response>;
 
 export type FetchDescriptor<T> = Descriptor<
-  [request: RequestWithParams<T>],
-  FetcherResponse
+  [request: Request],
+  Promise<Response>
 >;
-
-export type Middleware<T> = Decorator<FetchDescriptor<T>>;
-
-export type RouterOptionsDef<T> = {
-  /** The test function */
-  test?: (request: Request) => Promise<boolean> | boolean;
-  middlewares?: Middleware<T>[];
-  fetch?: (request: RequestWithParams<T>) => FetcherResponse;
-  [customOptionsSymbol]?: Partial<RouterOptionsDef<T>>;
-};
-
-export type Route<T> = {
-  method: "ALL" | HTTPMethods;
-  urlPattern: URLPattern;
-  options?: RouterOptionsDef<T>;
-};
 
 export const defaultCatching = (ex: unknown) => {
   const { response, options } = errorToResponse(ex);
@@ -75,8 +53,9 @@ export const defaultCatching = (ex: unknown) => {
   return response;
 };
 
-type ErrorHandler = (ex: unknown) => unknown | Promise<unknown>;
+type ErrorHandler = (ex: unknown) => Promise<Response> | Response;
 
+/** @deprecated */
 type ReturnFetch<T> = T extends "pass"
   ? null | Response | Promise<Response>
   : T extends "default-catching"
@@ -92,21 +71,16 @@ export type RouterOptions<E extends ErrorHandling> = {
   errorHandling: E;
 };
 
+/** @deprecated */
 const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
   const { 0: _, ...variables } = object.groups;
   return variables;
 };
 
-const urlPatternFrom = (value: unknown): URLPattern => {
-  if (typeof value === "string") return new URLPattern({ pathname: value });
-  if (value instanceof URLPattern) return value;
-  throw new Error(`Cannot parse URL Pattern to ${value}`);
-};
-
 export class Router<E extends ErrorHandling = "default-catching"> {
   static customOptions = customOptionsSymbol;
 
-  routes: Route<any>[] = [];
+  routes: Route[] = [];
 
   options: RouterOptions<E>;
 
@@ -117,74 +91,47 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     };
   }
 
-  use<T>(
-    method: Route<T>["method"],
-    urlPatternOrPathPattern: Route<T>["urlPattern"] | string,
-    options?: Route<T>["options"],
-  ) {
-    this.routes.push({
-      method,
-      urlPattern: urlPatternFrom(urlPatternOrPathPattern),
-      options:
-        options && customOptionsSymbol in options
-          ? options[customOptionsSymbol]
-          : options,
-    });
+  use<T>(...args: UseArguments) {
+    const route = useArgumentParser(...args);
+
+    if (route) {
+      this.routes.push(route);
+    }
 
     return this;
   }
 
-  fetch = async (request: Request): Promise<ReturnFetch<E>> => {
+  fetch: Fetch = async (request: Request): Promise<Response> => {
     const middlewareDecorators: Middleware<any>[] = [
       ...(this.options.middlewares ?? []),
     ];
 
     try {
       for (const route of this.routes) {
-        let urlPatternResult: URLPatternResult | null;
-        const matchMethod =
-          route.method === "ALL" || route.method === request.method;
-
-        const extraTestValidation =
-          (await route.options?.test?.(request)) ?? true;
-        if (
-          matchMethod &&
-          (urlPatternResult = route.urlPattern.exec(request.url)) &&
-          extraTestValidation
-        ) {
-          mapRequestParamas.set(request, {
-            ...groupURLPatternComponentResult(urlPatternResult.protocol),
-            ...groupURLPatternComponentResult(urlPatternResult.username),
-            ...groupURLPatternComponentResult(urlPatternResult.password),
-            ...groupURLPatternComponentResult(urlPatternResult.hostname),
-            ...groupURLPatternComponentResult(urlPatternResult.hash),
-            ...groupURLPatternComponentResult(urlPatternResult.pathname),
-          });
-
-          if (route.options?.middlewares) {
-            middlewareDecorators.push(...route.options.middlewares);
-          }
-
-          if (route.options?.fetch) {
-            const f: FetchDescriptor<any> = route.options.fetch;
-            const fetchDecorate = decorate(f, ...middlewareDecorators);
-            return fetchDecorate(request) as ReturnFetch<E>;
-          }
+        if (await route.test(request)) {
+          middlewareDecorators.push(...route.middlewares);
+          const fetch: Fetch = route.fetch;
+          const fetchDecorate = decorate(fetch, ...middlewareDecorators);
+          return await fetchDecorate(request);
         }
       }
 
-      if (this.options.errorHandling === "pass") return null as ReturnFetch<E>;
+      if (this.options.errorHandling === "pass") {
+        throw new Error(
+          'The "pass" error handler is deprecated and should not be used. Request was not handled.',
+        );
+      }
 
-      return new Response(null, { status: 404 }) as ReturnFetch<E>;
+      return new Response(null, { status: 404 });
     } catch (ex) {
       if (typeof this.options.errorHandling === "function")
-        return this.options.errorHandling(ex) as ReturnFetch<E>;
+        return this.options.errorHandling(ex);
 
       if (this.options.errorHandling === "pass") {
         throw ex;
       }
 
-      return defaultCatching(ex) as ReturnFetch<E>;
+      return defaultCatching(ex);
     }
   };
 
@@ -265,5 +212,9 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     return true;
     // console.log("🚀 ~ Router ~ requestListener ~ url:", url)
     // throw new Error("Method not implemented.");
+  };
+
+  [customOptionsSymbol] = {
+    fetch: this.fetch,
   };
 }
