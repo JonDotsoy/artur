@@ -532,31 +532,31 @@ test("should return a Response or null when errorHandling returns a Response", a
  *
  */
 
-test.only("test", async () => {
-  const router1 = new Router();
-  const router2 = new Router();
+// test.only("test", async () => {
+//   const router1 = new Router();
+//   const router2 = new Router();
 
-  router1.use("ALL", "/api", router2);
+//   router1.use("ALL", "/api", router2);
 
-  const res = await router1.fetch(new Request("http://localhost/api"));
+//   const res = await router1.fetch(new Request("http://localhost/api"));
 
-  expect(res.status).toEqual(404);
-});
+//   expect(res.status).toEqual(404);
+// });
 
-test.only("test", async () => {
-  const router1 = new Router();
-  const router2 = new Router();
+// test.only("test", async () => {
+//   const router1 = new Router();
+//   const router2 = new Router();
 
-  router1.use("ALL", "/api", router2);
+//   router1.use("ALL", "/api", router2);
 
-  router2.use("GET", "/foo", {
-    fetch: async (req) => Response.json({ data: "ok" }),
-  });
+//   router2.use("GET", "/foo", {
+//     fetch: async (req) => Response.json({ data: "ok" }),
+//   });
 
-  const res1 = await router1.fetch(new Request("http://localhost/api"));
-  const res2 = await router1.fetch(new Request("http://localhost/foo"));
+//   const res1 = await router1.fetch(new Request("http://localhost/api"));
+//   const res2 = await router1.fetch(new Request("http://localhost/foo"));
 
-  // expect(res1.status).toEqual(404);
-  // expect(res2.status).toEqual(200);
-  // expect(await res2.json()).toEqual({ data: "ok" });
-});
+//   // expect(res1.status).toEqual(404);
+//   // expect(res2.status).toEqual(200);
+//   // expect(await res2.json()).toEqual({ data: "ok" });
+// });

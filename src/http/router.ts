@@ -4,9 +4,18 @@ import type { IncomingMessage } from "http";
 import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
 import type { Fetch } from "./types/fetch-type.js";
 import { urlPatternFrom } from "./utils/url-pattern-from.js";
-import type { Route } from "./types/route.js";
+import type { Route as DeprecatedRoute } from "./types/route.js";
 import type { Middleware } from "./types/middleware.js";
+import { Route } from "./route.js";
+import {
+  useArgumentParser,
+  type UseArguments,
+} from "./utils/use-argument-parser.js";
+import { RequestReflect } from "./utils/request-reflect.js";
+import type { URLParams } from "./types/url-params.js";
+import { urlParamsSymbol } from "./constants/url-params-symbol.js";
 
+/** @deprecated */
 const mapRequestParamas = new WeakMap<
   Request,
   Record<string, string | undefined>
@@ -16,12 +25,8 @@ type P<T> = T extends string
   ? Record<T, string>
   : Record<string, undefined | string>;
 
-export const params = <T>(request: RequestWithParams<T>): P<T> => {
-  const paramsFound = mapRequestParamas.get(request);
-
-  if (!paramsFound) throw new Error(`Missing params`);
-
-  return paramsFound as P<T>;
+export const params = (request: Request) => {
+  return RequestReflect.get<URLParams>(request, urlParamsSymbol) ?? {};
 };
 
 export type RequestWithParams<T> = Request & { ["[[[s]]]"]?: T };
@@ -66,6 +71,7 @@ export type RouterOptions<E extends ErrorHandling> = {
   errorHandling: E;
 };
 
+/** @deprecated */
 const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
   const { 0: _, ...variables } = object.groups;
   return variables;
@@ -74,7 +80,7 @@ const groupURLPatternComponentResult = (object: URLPatternComponentResult) => {
 export class Router<E extends ErrorHandling = "default-catching"> {
   static customOptions = customOptionsSymbol;
 
-  routes: Route<any>[] = [];
+  routes: Route[] = [];
 
   options: RouterOptions<E>;
 
@@ -85,21 +91,12 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     };
   }
 
-  use<T>(
-    method: Route<T>["method"],
-    urlPatternOrPathPattern: Route<T>["urlPattern"] | string,
-    options?: Route<T>["options"],
-  ) {
-    const e_options =
-      options && customOptionsSymbol in options
-        ? options[customOptionsSymbol]
-        : options;
+  use<T>(...args: UseArguments) {
+    const route = useArgumentParser(...args);
 
-    this.routes.push({
-      method,
-      urlPattern: urlPatternFrom(urlPatternOrPathPattern),
-      options: e_options,
-    } satisfies Route<any>);
+    if (route) {
+      this.routes.push(route);
+    }
 
     return this;
   }
@@ -111,36 +108,42 @@ export class Router<E extends ErrorHandling = "default-catching"> {
 
     try {
       for (const route of this.routes) {
-        let urlPatternResult: URLPatternResult | null;
-        const matchMethod =
-          route.method === "ALL" || route.method === request.method;
-
-        const extraTestValidation =
-          (await route.options?.test?.(request)) ?? true;
-        if (
-          matchMethod &&
-          (urlPatternResult = route.urlPattern.exec(request.url)) &&
-          extraTestValidation
-        ) {
-          mapRequestParamas.set(request, {
-            ...groupURLPatternComponentResult(urlPatternResult.protocol),
-            ...groupURLPatternComponentResult(urlPatternResult.username),
-            ...groupURLPatternComponentResult(urlPatternResult.password),
-            ...groupURLPatternComponentResult(urlPatternResult.hostname),
-            ...groupURLPatternComponentResult(urlPatternResult.hash),
-            ...groupURLPatternComponentResult(urlPatternResult.pathname),
-          });
-
-          if (route.options?.middlewares) {
-            middlewareDecorators.push(...route.options.middlewares);
-          }
-
-          if (route.options?.fetch) {
-            const f: Fetch = route.options.fetch;
-            const fetchDecorate = decorate(f, ...middlewareDecorators);
-            return await fetchDecorate(request);
-          }
+        if (await route.test(request)) {
+          middlewareDecorators.push(...route.middlewares);
+          const fetch: Fetch = route.fetch;
+          const fetchDecorate = decorate(fetch, ...middlewareDecorators);
+          return await fetchDecorate(request);
         }
+
+        // let urlPatternResult: URLPatternResult | null;
+        // const matchMethod =
+        //   route.method === "ALL" || route.method === request.method;
+
+        // const extraTestValidation =
+        //   (await route.options?.test?.(request)) ?? true;
+        // if (
+        //   matchMethod &&
+        //   (urlPatternResult = route.urlPattern.exec(request.url)) &&
+        //   extraTestValidation
+        // ) {
+        //   mapRequestParamas.set(request, {
+        //     ...groupURLPatternComponentResult(urlPatternResult.protocol),
+        //     ...groupURLPatternComponentResult(urlPatternResult.username),
+        //     ...groupURLPatternComponentResult(urlPatternResult.password),
+        //     ...groupURLPatternComponentResult(urlPatternResult.hostname),
+        //     ...groupURLPatternComponentResult(urlPatternResult.hash),
+        //     ...groupURLPatternComponentResult(urlPatternResult.pathname),
+        //   });
+
+        //   if (route.options?.middlewares) {
+        //     middlewareDecorators.push(...route.options.middlewares);
+        //   }
+        //   if (route.options?.fetch) {
+        //     const f: Fetch = route.options.fetch;
+        //     const fetchDecorate = decorate(f, ...middlewareDecorators);
+        //     return await fetchDecorate(request);
+        //   }
+        // }
       }
 
       if (this.options.errorHandling === "pass") {
