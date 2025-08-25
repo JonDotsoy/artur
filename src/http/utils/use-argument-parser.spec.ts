@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { describe, expect, test } from "bun:test";
 import { useArgumentParser, parseUseArguments } from "./use-argument-parser";
-import { URLPattern } from "urlpattern-polyfill/urlpattern";
+import { URLPattern } from "urlpattern-polyfill";
 import type { Route } from "../types/route";
 import { urlPatternFrom } from "./url-pattern-from";
 import { ArgumentsError } from "../errors/arguments-error";

@@ -1,4 +1,4 @@
-import type { URLPattern } from "urlpattern-polyfill/urlpattern";
+import type { URLPattern } from "urlpattern-polyfill";
 import type { RouterOptionsDef } from "./router-options-def.js";
 import type { HTTPMethods } from "./http-methods-types.js";
 import type { Fetch } from "./fetch-type.js";

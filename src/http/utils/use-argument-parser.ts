@@ -1,4 +1,4 @@
-import { URLPattern } from "urlpattern-polyfill/urlpattern";
+import { URLPattern } from "urlpattern-polyfill";
 import { urlPatternFrom } from "./url-pattern-from.js";
 import type { Fetch } from "../types/fetch-type.js";
 import { ArgumentsError } from "../errors/arguments-error.js";
