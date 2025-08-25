@@ -1,3 +1,22 @@
+/**
+ * A utility class for storing and retrieving metadata associated with Request objects using WeakMap.
+ *
+ * This provides a clean way to attach additional data to Request objects without modifying the
+ * original Request instance, which is particularly useful for storing URL parameters, user data,
+ * or other request-scoped information.
+ *
+ * @example
+ * ```typescript
+ * const request = new Request("http://localhost/api/users/123");
+ *
+ * // Store URL parameters
+ * RequestReflect.set(request, urlParamsSymbol, { id: "123" });
+ *
+ * // Retrieve URL parameters later
+ * const params = RequestReflect.get(request, urlParamsSymbol);
+ * console.log(params.id); // "123"
+ * ```
+ */
 export class RequestReflect {
   private static requestMap = new WeakMap<Request, Map<string | symbol, any>>();
   private static getRequestMap(request: Request): Map<string | symbol, any> {
