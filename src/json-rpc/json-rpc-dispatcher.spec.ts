@@ -1,5 +1,5 @@
 import { test, expect, mock, beforeEach, afterEach, describe } from "bun:test";
-import { JsonRpcSessionManager } from "./json-rpc-session-manager.js";
+import { JsonRpcDispatcher } from "./json-rpc-dispatcher.js";
 import {
   JsonRpcError,
   type JsonRpcRequest,
@@ -22,23 +22,23 @@ describe("JsonRpcError", () => {
   });
 });
 
-describe("JsonRpcSessionManager", () => {
-  let session: JsonRpcSessionManager;
+describe("JsonRpcDispatcher", () => {
+  let dispatcher: JsonRpcDispatcher;
 
   beforeEach(() => {
-    session = new JsonRpcSessionManager();
+    dispatcher = new JsonRpcDispatcher();
   });
 
   afterEach(async () => {
-    await session.stop();
+    await dispatcher.stop();
   });
 
   test("should register method handler and receive request object when called", async () => {
     const p = Promise.withResolvers<JsonRpcRequest>();
-    await session.use("testMethod", (params, request) => {
+    await dispatcher.use("testMethod", (params, request) => {
       p.resolve(request);
     });
-    session.request({
+    dispatcher.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -55,10 +55,10 @@ describe("JsonRpcSessionManager", () => {
 
   test("should register method handler using registerMethod API", async () => {
     const p = Promise.withResolvers<JsonRpcRequest>();
-    await session.registerMethod("testMethod", (params, request) => {
+    await dispatcher.registerMethod("testMethod", (params, request) => {
       p.resolve(request);
     });
-    session.request({
+    dispatcher.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -74,15 +74,15 @@ describe("JsonRpcSessionManager", () => {
   });
   test("should handle method execution and emit response through subscription", async () => {
     const p = Promise.withResolvers<JsonRpcResponse>();
-    session.use("testMethod", (params, request) => {
+    dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
-    session.subscribe((response) => {
+    dispatcher.subscribe((response) => {
       p.resolve(response);
     });
-    session.request({
+    dispatcher.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -98,13 +98,13 @@ describe("JsonRpcSessionManager", () => {
     });
   });
   test("should return response promise directly from request method", async () => {
-    session.use("testMethod", (params, request) => {
+    dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await session.request({
+    const response = await dispatcher.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -120,13 +120,13 @@ describe("JsonRpcSessionManager", () => {
     });
   });
   test("should handle single JSON-RPC request via HTTP POST and return JSON response", async () => {
-    session.use("testMethod", (params, request) => {
+    dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await session.fetch(
+    const response = await dispatcher.fetch(
       new Request("http://localhost", {
         method: "POST",
         headers: {
@@ -152,13 +152,13 @@ describe("JsonRpcSessionManager", () => {
     });
   });
   test("should handle batch JSON-RPC requests via HTTP POST and return array of responses", async () => {
-    session.use("testMethod", (params, request) => {
+    dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await session.fetch(
+    const response = await dispatcher.fetch(
       new Request("http://localhost", {
         method: "POST",
         headers: {
@@ -201,19 +201,19 @@ describe("JsonRpcSessionManager", () => {
     ]);
   });
   test("should stream JSON-RPC responses via Server-Sent Events when using GET and PUT requests", async () => {
-    session = new JsonRpcSessionManager({
+    dispatcher = new JsonRpcDispatcher({
       sseEnabled: true,
     });
     const pushChunk = mock((chunk: any) => {});
     const pending = Promise.withResolvers<void>();
 
-    session.use("testMethod", (params, request) => {
+    dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await session.fetch(
+    const response = await dispatcher.fetch(
       new Request("http://localhost", {
         method: "GET",
         headers: {
@@ -231,7 +231,7 @@ describe("JsonRpcSessionManager", () => {
       }),
     );
 
-    await session.fetch(
+    await dispatcher.fetch(
       new Request("http://localhost", {
         method: "PUT",
         headers: {
@@ -255,11 +255,11 @@ describe("JsonRpcSessionManager", () => {
 });
 
 describe("Router integration", () => {
-  let session: JsonRpcSessionManager;
+  let dispatcher: JsonRpcDispatcher;
 
   beforeEach(() => {
-    session = new JsonRpcSessionManager();
-    session.use("testMethod", (params, request) => {
+    dispatcher = new JsonRpcDispatcher();
+    dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -267,13 +267,13 @@ describe("Router integration", () => {
   });
 
   afterEach(async () => {
-    await session.stop();
+    await dispatcher.stop();
   });
 
   test("should integrate with Router to handle JSON-RPC requests via HTTP endpoint", async () => {
     const router = new Router();
 
-    router.use("POST", "/json-rpc", session);
+    router.use("POST", "/json-rpc", dispatcher);
 
     const response = await router.fetch(
       new Request("http://localhost/json-rpc", {

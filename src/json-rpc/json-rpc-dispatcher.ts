@@ -27,7 +27,7 @@ type Options = {
   sseEnabled: boolean;
 };
 
-export class JsonRpcSessionManager {
+export class JsonRpcDispatcher {
   private static sseWarningDisplayed = true;
   private handlers = new Map<string, JsonRpcHandler>();
   private subscribers = new Set<(response: JsonRpcResponse) => void>();
@@ -41,11 +41,11 @@ export class JsonRpcSessionManager {
       ...options,
     };
 
-    if (this.options.sseEnabled && JsonRpcSessionManager.sseWarningDisplayed) {
+    if (this.options.sseEnabled && JsonRpcDispatcher.sseWarningDisplayed) {
       console.warn(
         "Warning: SSE support is experimental and should be used with caution.",
       );
-      JsonRpcSessionManager.sseWarningDisplayed = false;
+      JsonRpcDispatcher.sseWarningDisplayed = false;
     }
   }
 
