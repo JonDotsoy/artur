@@ -52,6 +52,26 @@ describe("JsonRpcSessionManager", () => {
       params: {},
     });
   });
+
+  test("should register method handler using registerMethod API", async () => {
+    const p = Promise.withResolvers<JsonRpcRequest>();
+    await session.registerMethod("testMethod", (params, request) => {
+      p.resolve(request);
+    });
+    session.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    });
+    const request = await p.promise;
+    expect(request).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    });
+  });
   test("should handle method execution and emit response through subscription", async () => {
     const p = Promise.withResolvers<JsonRpcResponse>();
     session.use("testMethod", (params, request) => {
