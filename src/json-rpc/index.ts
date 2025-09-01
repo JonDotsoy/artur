@@ -1,4 +1,4 @@
-export { JsonRpcSessionManager } from "./json-rpc-session-manager.js";
+export { JsonRpcDispatcher } from "./json-rpc-dispatcher.js";
 export type {
   JsonRpcRequest,
   JsonRpcResponse,

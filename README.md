@@ -6,7 +6,7 @@ Artur is a lightweight web framework for building HTTP services with minimal set
 
 - Declarative router built on top of the URLPattern API
 - Middleware support for request and response processing
-- **JSON-RPC 2.0 protocol support** with session management
+- **JSON-RPC 2.0 protocol support** with request dispatching
 - Works with Node.js and Bun
 - Helpers for error handling and CORS
 - Fully typed when used with TypeScript
@@ -149,14 +149,14 @@ router.use("OPTIONS", "/hello", {
 
 ## JSON-RPC 2.0 Support
 
-Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcSessionManager` class. This enables you to build real-time applications with remote procedure calls.
+Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcDispatcher` class. This enables you to build real-time applications with remote procedure calls.
 
 ### Basic JSON-RPC Setup
 
 ```ts
-import { JsonRpcSessionManager, Router } from "artur";
+import { JsonRpcDispatcher, Router } from "artur";
 
-const rpc = new JsonRpcSessionManager();
+const rpc = new JsonRpcDispatcher();
 
 // Register RPC methods
 rpc.use("add", (params: { a: number; b: number }) => {
@@ -174,10 +174,10 @@ router.use("POST", "/api/rpc", rpc);
 
 ### Configuration Options
 
-The `JsonRpcSessionManager` accepts configuration options to customize its behavior:
+The `JsonRpcDispatcher` accepts configuration options to customize its behavior:
 
 ```ts
-const rpc = new JsonRpcSessionManager({
+const rpc = new JsonRpcDispatcher({
   sseEnabled: true, // Enable Server-Sent Events support for GET requests
 });
 ```
@@ -219,8 +219,8 @@ const response = await fetch("/api/rpc", {
 #### GET - Server-Sent Events (Real-time streaming) ⚠️ Experimental
 
 ```ts
-// First, enable SSE support when creating the session manager
-const rpc = new JsonRpcSessionManager({
+// First, enable SSE support when creating the dispatcher
+const rpc = new JsonRpcDispatcher({
   sseEnabled: true,
 });
 
@@ -251,7 +251,7 @@ fetch("/api/rpc", {
 ### Direct Usage (without Router)
 
 ```ts
-const rpc = new JsonRpcSessionManager();
+const rpc = new JsonRpcDispatcher();
 
 rpc.use("calculate", (params: { operation: string; values: number[] }) => {
   switch (params.operation) {
