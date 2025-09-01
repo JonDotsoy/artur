@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/JonDotsoy/artur/compare/artur-v1.5.1...artur-v1.6.0) (2025-09-01)
+
+
+### Features
+
+* add registerMethod() and deprecate use() for backward compatibility ([ad1cdd6](https://github.com/JonDotsoy/artur/commit/ad1cdd60b961af1d5b26390bdb6b014b7bd447ea))
+
 ## [1.5.1](https://github.com/JonDotsoy/artur/compare/artur-v1.5.0...artur-v1.5.1) (2025-08-25)
 
 
