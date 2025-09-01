@@ -59,8 +59,18 @@ export class JsonRpcSessionManager {
     }
   }
 
-  use<P = any, R = any>(method: string, handler: JsonRpcHandler<P, R>): void {
+  registerMethod<P = any, R = any>(
+    method: string,
+    handler: JsonRpcHandler<P, R>,
+  ): void {
     this.handlers.set(method, handler);
+  }
+
+  /**
+   * @deprecated Use registerMethod() instead. This method is kept for backward compatibility.
+   */
+  use<P = any, R = any>(method: string, handler: JsonRpcHandler<P, R>): void {
+    this.registerMethod(method, handler);
   }
 
   subscribe(callback: (response: JsonRpcResponse) => void) {
