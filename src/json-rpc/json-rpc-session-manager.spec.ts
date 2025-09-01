@@ -35,7 +35,7 @@ describe("JsonRpcSessionManager", () => {
 
   test("should register method handler and receive request object when called", async () => {
     const p = Promise.withResolvers<JsonRpcRequest>();
-    await session.use("testMethod", (params, request) => {
+    await session.registerMethod("testMethod", (params, request) => {
       p.resolve(request);
     });
     session.request({
@@ -54,7 +54,7 @@ describe("JsonRpcSessionManager", () => {
   });
   test("should handle method execution and emit response through subscription", async () => {
     const p = Promise.withResolvers<JsonRpcResponse>();
-    session.use("testMethod", (params, request) => {
+    session.registerMethod("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -78,7 +78,7 @@ describe("JsonRpcSessionManager", () => {
     });
   });
   test("should return response promise directly from request method", async () => {
-    session.use("testMethod", (params, request) => {
+    session.registerMethod("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -100,7 +100,7 @@ describe("JsonRpcSessionManager", () => {
     });
   });
   test("should handle single JSON-RPC request via HTTP POST and return JSON response", async () => {
-    session.use("testMethod", (params, request) => {
+    session.registerMethod("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -132,7 +132,7 @@ describe("JsonRpcSessionManager", () => {
     });
   });
   test("should handle batch JSON-RPC requests via HTTP POST and return array of responses", async () => {
-    session.use("testMethod", (params, request) => {
+    session.registerMethod("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -187,7 +187,7 @@ describe("JsonRpcSessionManager", () => {
     const pushChunk = mock((chunk: any) => {});
     const pending = Promise.withResolvers<void>();
 
-    session.use("testMethod", (params, request) => {
+    session.registerMethod("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -239,7 +239,7 @@ describe("Router integration", () => {
 
   beforeEach(() => {
     session = new JsonRpcSessionManager();
-    session.use("testMethod", (params, request) => {
+    session.registerMethod("testMethod", (params, request) => {
       return {
         ok: true,
       };

@@ -159,11 +159,11 @@ import { JsonRpcSessionManager, Router } from "artur";
 const rpc = new JsonRpcSessionManager();
 
 // Register RPC methods
-rpc.use("add", (params: { a: number; b: number }) => {
+rpc.registerMethod("add", (params: { a: number; b: number }) => {
   return params.a + params.b;
 });
 
-rpc.use("greet", (params: { name: string }) => {
+rpc.registerMethod("greet", (params: { name: string }) => {
   return `Hello, ${params.name}!`;
 });
 
@@ -253,7 +253,7 @@ fetch("/api/rpc", {
 ```ts
 const rpc = new JsonRpcSessionManager();
 
-rpc.use("calculate", (params: { operation: string; values: number[] }) => {
+rpc.registerMethod("calculate", (params: { operation: string; values: number[] }) => {
   switch (params.operation) {
     case "sum":
       return params.values.reduce((a, b) => a + b, 0);
@@ -278,7 +278,7 @@ const result = await rpc.request({
 ```ts
 import { JsonRpcError } from "artur";
 
-rpc.use("divide", (params: { a: number; b: number }) => {
+rpc.registerMethod("divide", (params: { a: number; b: number }) => {
   if (params.b === 0) {
     throw new JsonRpcError(-32603, "Division by zero", {
       code: "DIVISION_BY_ZERO",

@@ -59,7 +59,7 @@ export class JsonRpcSessionManager {
     }
   }
 
-  use<P = any, R = any>(method: string, handler: JsonRpcHandler<P, R>): void {
+  registerMethod<P = any, R = any>(method: string, handler: JsonRpcHandler<P, R>): void {
     this.handlers.set(method, handler);
   }
 
