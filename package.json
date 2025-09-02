@@ -35,7 +35,7 @@
     }
   },
   "devDependencies": {
-    "@jondotsoy/utils-js": "^0.6.0",
+    "@jondotsoy/utils-js": "^0.13.0",
     "@types/bun": "latest",
     "@types/event-source-polyfill": "^1.0.5",
     "dispose-with-controller": "^0.1.1",
