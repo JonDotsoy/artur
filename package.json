@@ -32,6 +32,12 @@
       "require": "./lib/cjs/http/access-control.js",
       "types": "./lib/types/http/access-control.d.ts",
       "default": "./lib/esm/http/access-control.js"
+    },
+    "./utils/queue": {
+      "import": "./lib/esm/utils/queue/index.js",
+      "require": "./lib/cjs/utils/queue/index.js",
+      "types": "./lib/types/utils/queue/index.d.ts",
+      "default": "./lib/esm/utils/queue/index.js"
     }
   },
   "devDependencies": {
