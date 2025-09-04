@@ -133,7 +133,7 @@ export class JsonRpcDispatcher {
       const method = request.method;
       const contentType = request.headers.get("Content-Type");
 
-      if (method === "POST" || method === "PUT") {
+      if (method === "POST" || (this.options.sseEnabled && method === "PUT")) {
         const body =
           contentType === "application/json" ? await request.json() : null;
         const bodyParsed = bodyRequest.safeParse(body);
