@@ -149,7 +149,7 @@ router.use("OPTIONS", "/hello", {
 
 ## JSON-RPC 2.0 Support
 
-Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcDispatcher` class. This enables you to build real-time applications with remote procedure calls.
+Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcDispatcher` class. This enables you to build real-time applications with remote procedure calls, session management, and Server-Sent Events (SSE) streaming.
 
 ### Basic JSON-RPC Setup
 
@@ -158,14 +158,17 @@ import { JsonRpcDispatcher, Router } from "artur";
 
 const rpc = new JsonRpcDispatcher();
 
-// Register RPC methods
-rpc.use("add", (params: { a: number; b: number }) => {
+// Register RPC methods using the new registerMethod API
+rpc.registerMethod("add", (params: { a: number; b: number }) => {
   return params.a + params.b;
 });
 
-rpc.use("greet", (params: { name: string }) => {
+rpc.registerMethod("greet", (params: { name: string }) => {
   return `Hello, ${params.name}!`;
 });
+
+// Legacy API (deprecated but still supported)
+// rpc.use("methodName", handler);
 
 // Integrate with Router
 const router = new Router();
@@ -178,13 +181,22 @@ The `JsonRpcDispatcher` accepts configuration options to customize its behavior:
 
 ```ts
 const rpc = new JsonRpcDispatcher({
-  sseEnabled: true, // Enable Server-Sent Events support for GET requests
+  sseEnabled: true, // Enable Server-Sent Events support for real-time streaming
+  sessionIdFactory: (event) => {
+    // Custom session ID extraction logic
+    return event.httpRequest?.headers.get("x-session-id") || null;
+  },
 });
 ```
 
 #### Available Options
 
-- **`sseEnabled`** (`boolean`, default: `false`): Enables Server-Sent Events (SSE) support for GET requests. When enabled, GET requests to the JSON-RPC endpoint will return a streaming response that can receive real-time updates. ⚠️ **This is an experimental feature.**
+- **`sseEnabled`** (`boolean`, default: `false`): Enables Server-Sent Events (SSE) support for GET requests and session-based communication. When enabled, the dispatcher supports real-time streaming and session management. ⚠️ **This is an experimental feature.**
+
+- **`sessionIdFactory`** (`function`): Custom function to extract session IDs from JSON-RPC events. The default factory checks for:
+  - URL parameter `json_rpc_token`
+  - HTTP header `x-json-rpc-token`
+  - URL parameter `token`
 
 ### Multiple Transport Methods
 
@@ -216,7 +228,7 @@ const response = await fetch("/api/rpc", {
 });
 ```
 
-#### GET - Server-Sent Events (Real-time streaming) ⚠️ Experimental
+#### PUT - Session-based requests (requires SSE enabled) ⚠️ Experimental
 
 ```ts
 // First, enable SSE support when creating the dispatcher
@@ -224,27 +236,77 @@ const rpc = new JsonRpcDispatcher({
   sseEnabled: true,
 });
 
-// Then connect to the stream
-const eventSource = new EventSource("/api/rpc");
-eventSource.onmessage = (event) => {
-  const response = JSON.parse(event.data);
-  console.log("RPC Response:", response);
-};
-```
-
-#### PUT - Fire-and-forget requests
-
-```ts
-// Send request without waiting for response
-fetch("/api/rpc", {
+// Send requests to a session queue (responses available via GET/SSE)
+fetch("/api/rpc?json_rpc_token=session123", {
   method: "PUT",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     jsonrpc: "2.0",
     id: 1,
-    method: "logEvent",
-    params: { event: "user_login" },
+    method: "processData",
+    params: { data: "example" },
   }),
+});
+```
+
+#### GET - Server-Sent Events streaming (requires SSE enabled) ⚠️ Experimental
+
+```ts
+// Connect to the session stream to receive responses
+const eventSource = new EventSource("/api/rpc?json_rpc_token=session123");
+eventSource.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  console.log("RPC Response:", response);
+};
+
+// Clean up when done
+eventSource.close();
+```
+
+### Session Management ⚠️ Experimental
+
+The JSON-RPC dispatcher supports session-based communication for building real-time applications. Sessions allow you to queue requests and consume responses asynchronously.
+
+```ts
+const rpc = new JsonRpcDispatcher({
+  sseEnabled: true, // Required for session support
+});
+
+// Open a session
+const session = rpc.openSession("user_session_123");
+
+// Make requests within the session context
+await session.request({
+  jsonrpc: "2.0",
+  id: 1,
+  method: "startProcess",
+  params: { processId: "abc123" },
+});
+
+// Consume responses from the session queue
+for await (const { message, ack } of session.consume()) {
+  console.log("Response:", message);
+  ack(); // Acknowledge the message as processed
+}
+```
+
+#### Session ID Extraction
+
+Sessions require a unique identifier extracted from the HTTP request. The default extraction logic supports:
+
+- **URL Parameter**: `?json_rpc_token=session123`
+- **HTTP Header**: `X-JSON-RPC-Token: session123`
+- **URL Parameter**: `?token=session123`
+
+You can provide a custom session ID factory:
+
+```ts
+const rpc = new JsonRpcDispatcher({
+  sseEnabled: true,
+  sessionIdFactory: (event) => {
+    // Extract from custom header
+    return event.httpRequest?.headers.get("x-custom-session") || null;
+  },
 });
 ```
 
@@ -253,16 +315,19 @@ fetch("/api/rpc", {
 ```ts
 const rpc = new JsonRpcDispatcher();
 
-rpc.use("calculate", (params: { operation: string; values: number[] }) => {
-  switch (params.operation) {
-    case "sum":
-      return params.values.reduce((a, b) => a + b, 0);
-    case "multiply":
-      return params.values.reduce((a, b) => a * b, 1);
-    default:
-      throw new JsonRpcError(-32602, "Invalid operation");
-  }
-});
+rpc.registerMethod(
+  "calculate",
+  (params: { operation: string; values: number[] }) => {
+    switch (params.operation) {
+      case "sum":
+        return params.values.reduce((a, b) => a + b, 0);
+      case "multiply":
+        return params.values.reduce((a, b) => a * b, 1);
+      default:
+        throw new JsonRpcError(-32602, "Invalid operation");
+    }
+  },
+);
 
 // Direct request handling
 const result = await rpc.request({
@@ -270,35 +335,169 @@ const result = await rpc.request({
   id: 1,
   method: "calculate",
   params: { operation: "sum", values: [1, 2, 3, 4, 5] },
-});
+}).response;
+
+console.log(result); // { jsonrpc: "2.0", id: 1, result: 15 }
 ```
 
 ### Error Handling
 
+JSON-RPC provides comprehensive error handling with built-in error codes and custom error support:
+
 ```ts
 import { JsonRpcError } from "artur";
 
-rpc.use("divide", (params: { a: number; b: number }) => {
+rpc.registerMethod("divide", (params: { a: number; b: number }) => {
   if (params.b === 0) {
     throw new JsonRpcError(-32603, "Division by zero", {
       code: "DIVISION_BY_ZERO",
+      hint: "The divisor cannot be zero",
     });
   }
   return params.a / params.b;
 });
+
+// Built-in error codes
+rpc.registerMethod("validateUser", (params: { userId: string }) => {
+  if (!params.userId) {
+    // Invalid parameters
+    throw new JsonRpcError(-32602, "Invalid params: userId is required");
+  }
+
+  // Method-specific errors
+  throw new JsonRpcError(1001, "User not found", { userId: params.userId });
+});
 ```
 
-### Real-time Subscriptions
+#### Standard JSON-RPC Error Codes
+
+- **-32700**: Parse error (invalid JSON)
+- **-32600**: Invalid request (missing required fields)
+- **-32601**: Method not found
+- **-32602**: Invalid params
+- **-32603**: Internal error
+
+### Real-time Example: Chat Application
+
+Here's a complete example showing how to build a real-time chat application:
 
 ```ts
-// Subscribe to responses
-const unsubscribe = rpc.subscribe((response) => {
-  console.log("New response:", response);
+import { JsonRpcDispatcher, Router } from "artur";
+
+const rpc = new JsonRpcDispatcher({
+  sseEnabled: true,
 });
 
-// Clean up when done
-unsubscribe();
+// Store active chat sessions
+const chatSessions = new Map<string, Set<string>>();
+
+// Join a chat room
+rpc.registerMethod(
+  "chat.join",
+  (params: { room: string; user: string }, request, event) => {
+    const sessionId = rpc.options.sessionIdFactory(event);
+    if (!sessionId) throw new JsonRpcError(-32602, "Session ID required");
+
+    if (!chatSessions.has(params.room)) {
+      chatSessions.set(params.room, new Set());
+    }
+
+    chatSessions.get(params.room)?.add(sessionId);
+    return { joined: params.room, user: params.user };
+  },
+);
+
+// Send a message to all room participants
+rpc.registerMethod(
+  "chat.send",
+  async (params: { room: string; message: string; user: string }) => {
+    const roomSessions = chatSessions.get(params.room);
+    if (!roomSessions) throw new JsonRpcError(1001, "Room not found");
+
+    // Broadcast to all sessions in the room
+    for (const sessionId of roomSessions) {
+      const session = rpc.openSession(sessionId);
+      await session.request({
+        jsonrpc: "2.0",
+        id: Date.now(),
+        method: "chat.message",
+        params: {
+          room: params.room,
+          user: params.user,
+          message: params.message,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    return { sent: true };
+  },
+);
+
+// Set up the router
+const router = new Router();
+router.use("*", "/api/chat", rpc);
+
+// Client usage:
+// 1. Connect: GET /api/chat?json_rpc_token=user123
+// 2. Join room: PUT /api/chat?json_rpc_token=user123 with { method: "chat.join", ... }
+// 3. Send messages: PUT /api/chat?json_rpc_token=user123 with { method: "chat.send", ... }
+// 4. Receive messages via Server-Sent Events from step 1
 ```
+
+### Advanced: Server-Sent Events Integration
+
+The JSON-RPC dispatcher includes built-in Server-Sent Events support via the `DataEventSourceEncoder` utility:
+
+```ts
+import { DataEventSourceEncoder } from "artur";
+
+// Manual SSE streaming (advanced usage)
+const encoder = new DataEventSourceEncoder();
+
+const readable = new ReadableStream({
+  start(controller) {
+    // Send JSON-RPC responses as SSE events
+    controller.enqueue(
+      encoder.encode({
+        id: "msg-1",
+        event: "response",
+        data: { jsonrpc: "2.0", id: 1, result: "Hello!" },
+        retry: 3000,
+      }),
+    );
+  },
+});
+
+return new Response(readable, {
+  headers: {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  },
+});
+```
+
+### Exported Types and Utilities
+
+For TypeScript projects, Artur exports the following JSON-RPC classes and types:
+
+```ts
+// Main JSON-RPC class available from "artur"
+import { JsonRpcDispatcher } from "artur";
+
+// For additional types and utilities, import directly from JSON-RPC module
+import {
+  JsonRpcError,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
+  type JsonRpcResultResponse,
+  type JsonRpcErrorResponse,
+  type JsonRpcHandler,
+} from "artur/json-rpc";
+```
+
+> **Note**: The types can be imported from the main package in future versions. Currently, they're available from the JSON-RPC submodule.
 
 ## License
 
