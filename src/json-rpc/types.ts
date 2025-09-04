@@ -41,7 +41,12 @@ export class JsonRpcError<T = any> extends Error {
   }
 }
 
+export type JsonRpcEvent = {
+  httpRequest?: Request;
+};
+
 export type JsonRpcHandler<P = any, R = any> = (
   params: P,
   request: JsonRpcRequest,
+  event: JsonRpcEvent,
 ) => Promise<R> | R;

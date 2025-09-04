@@ -95,7 +95,7 @@ export class JsonRpcDispatcher {
         return {
           id: request.id,
           jsonrpc: "2.0",
-          result: await handler(params, request),
+          result: await handler(params, request, event ?? {}),
         };
       })
       .catch((error): JsonRpcErrorResponse => {
@@ -148,10 +148,14 @@ export class JsonRpcDispatcher {
         const response = Array.isArray(bodyParsed.data)
           ? await Promise.all(
               bodyParsed.data.map((req) =>
-                getResponseForPostMethod(this.request(req)),
+                getResponseForPostMethod(
+                  this.request(req, { httpRequest: request }),
+                ),
               ),
             )
-          : await getResponseForPostMethod(this.request(bodyParsed.data));
+          : await getResponseForPostMethod(
+              this.request(bodyParsed.data, { httpRequest: request }),
+            );
 
         return new Response(
           method === "POST" ? JSON.stringify(response) : null,
