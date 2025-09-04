@@ -189,6 +189,7 @@ export class JsonRpcDispatcher {
 
       return new Response("Method not allowed", { status: 405 });
     } catch (error) {
+      console.error("Error processing JSON-RPC request:", error);
       return new Response("Internal Server Error", { status: 500 });
     }
   };
