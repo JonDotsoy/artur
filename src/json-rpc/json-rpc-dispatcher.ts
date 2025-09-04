@@ -4,6 +4,7 @@ import type {
   JsonRpcResultResponse,
   JsonRpcErrorResponse,
   JsonRpcHandler,
+  JsonRpcEvent,
 } from "./types.js";
 import { JsonRpcError } from "./types.js";
 import { z } from "zod";
