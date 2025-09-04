@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Router } from "../http/router.js";
 import { type RouterOptionsDef } from "../http/types/router-options-def.js";
 import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.js";
+import { Queue, MemoryStore, Store, Message } from "@jondotsoy/utils-js/queue";
 
 const jsonRpcRequestSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -26,12 +27,115 @@ const bodyRequest = z.union([
 
 type Options = {
   sseEnabled: boolean;
+  sessionIdFactory: (event: JsonRpcEvent) => string | null;
 };
+
+const sessionIdFactory = (event: JsonRpcEvent) => {
+  if (event.httpRequest) {
+    const request = event.httpRequest;
+    const url = new URL(request.url);
+    const jsonRpcToken = url.searchParams.get("json_rpc_token");
+    if (jsonRpcToken) {
+      return jsonRpcToken;
+    }
+    const headerJsonRpcToken = request.headers.get("x-json-rpc-token")?.trim();
+    if (headerJsonRpcToken) {
+      return headerJsonRpcToken;
+    }
+    const token = url.searchParams.get("token");
+    if (token) {
+      return token;
+    }
+  }
+  return null;
+};
+
+const shareMemory = new Map<string, MemoryStore>();
+
+class SessionMemoryStore extends Store {
+  #sessionId: string;
+  constructor(sessionId: string) {
+    super();
+    this.#sessionId = sessionId;
+  }
+  async addMessage(message: Message): Promise<void> {
+    let messages = shareMemory.get(this.#sessionId);
+    if (!messages) {
+      messages = new MemoryStore();
+      shareMemory.set(this.#sessionId, messages);
+    }
+    messages.addMessage(message);
+  }
+  async getMessage(messageId: string): Promise<Message | null> {
+    return (
+      (await shareMemory.get(this.#sessionId)?.getMessage(messageId)) ?? null
+    );
+  }
+  async acknowledgeMessage(messageId: string): Promise<void> {
+    await shareMemory.get(this.#sessionId)?.acknowledgeMessage(messageId);
+  }
+  async deleteMessage(messageId: string): Promise<void> {
+    const sessionMemory = shareMemory.get(this.#sessionId);
+    if (sessionMemory) {
+      await sessionMemory.deleteMessage(messageId);
+      if ((await sessionMemory.getSize()) === 0) {
+        await sessionMemory.close();
+        shareMemory.delete(this.#sessionId);
+      }
+    }
+  }
+  async claimMessage(
+    acknowledgeTimeoutMs: number,
+    now: number,
+    abort?: AbortSignal,
+  ): Promise<Message | null> {
+    return (
+      (await shareMemory
+        .get(this.#sessionId)
+        ?.claimMessage(acknowledgeTimeoutMs, now, abort)) ?? null
+    );
+  }
+  async getSize(): Promise<number> {
+    return (await shareMemory.get(this.#sessionId)?.getSize()) ?? 0;
+  }
+  async close(): Promise<void> {
+    await shareMemory.get(this.#sessionId)?.close();
+  }
+}
+
+const sessionMemoryStore = (sessionId: string) =>
+  new SessionMemoryStore(sessionId);
+
+export class Session {
+  #id: string;
+  #jsonRpcDispatcher: JsonRpcDispatcher;
+  #queue: Queue;
+
+  constructor(id: string, jsonRpcDispatcher: JsonRpcDispatcher, queue: Queue) {
+    this.#id = id;
+    this.#jsonRpcDispatcher = jsonRpcDispatcher;
+    this.#queue = queue;
+  }
+
+  async request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
+    const response = await this.#jsonRpcDispatcher.request(request, event)
+      .response;
+    await this.#queue.add(response);
+  }
+
+  async *consume(signal?: AbortSignal) {
+    for await (const message of this.#queue.consume(signal)) {
+      yield {
+        message,
+        ack: () => this.#queue.ack(message.id),
+      };
+    }
+  }
+}
 
 export class JsonRpcDispatcher {
   private static sseWarningDisplayed = true;
   private handlers = new Map<string, JsonRpcHandler>();
-  private subscribers = new Set<(response: JsonRpcResponse) => void>();
   private requests = new Set<Promise<JsonRpcResponse>>();
 
   private options: Options;
@@ -39,6 +143,7 @@ export class JsonRpcDispatcher {
   constructor(options?: Partial<Options>) {
     this.options = {
       sseEnabled: false,
+      sessionIdFactory: sessionIdFactory,
       ...options,
     };
 
@@ -52,12 +157,6 @@ export class JsonRpcDispatcher {
 
   async stop() {
     await Promise.allSettled(this.requests);
-  }
-
-  private propagate(response: JsonRpcResponse) {
-    for (const subscriber of this.subscribers) {
-      subscriber(response);
-    }
   }
 
   registerMethod<P = any, R = any>(
@@ -74,14 +173,17 @@ export class JsonRpcDispatcher {
     this.registerMethod(method, handler);
   }
 
-  subscribe(callback: (response: JsonRpcResponse) => void) {
-    this.subscribers.add(callback);
-    return () => {
-      this.subscribers.delete(callback);
-    };
+  openSession(sessionId: string) {
+    const session = new Session(
+      sessionId,
+      this,
+      new Queue({ store: sessionMemoryStore(sessionId) }),
+    );
+
+    return session;
   }
 
-  request<P = any>(request: JsonRpcRequest<P>) {
+  request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
     const handler = this.handlers.get(request.method);
 
     const process = Promise.withResolvers<JsonRpcResponse>();
@@ -118,7 +220,6 @@ export class JsonRpcDispatcher {
       })
       .then((response) => {
         process.resolve(response);
-        this.propagate(response);
       })
       .finally(() => {
         this.requests.delete(process.promise);
@@ -138,7 +239,7 @@ export class JsonRpcDispatcher {
       const method = request.method;
       const contentType = request.headers.get("Content-Type");
 
-      if (method === "POST" || (this.options.sseEnabled && method === "PUT")) {
+      if (method === "POST") {
         const body =
           contentType === "application/json" ? await request.json() : null;
         const bodyParsed = bodyRequest.safeParse(body);
@@ -168,20 +269,62 @@ export class JsonRpcDispatcher {
         );
       }
 
+      if (this.options.sseEnabled && method === "PUT") {
+        const sessionId = this.options.sessionIdFactory(event);
+
+        if (!sessionId) {
+          return new Response("Bad Request", { status: 400 });
+        }
+
+        const body =
+          contentType === "application/json" ? await request.json() : null;
+
+        const bodyParsed = bodyRequest.safeParse(body);
+
+        if (!bodyParsed.success) {
+          return new Response("Bad Request", { status: 400 });
+        }
+
+        const session = this.openSession(sessionId);
+
+        const parsedDataArray = Array.isArray(bodyParsed.data)
+          ? bodyParsed.data
+          : [bodyParsed.data];
+
+        for (const jsonRpcRequest of parsedDataArray) {
+          await session.request(jsonRpcRequest, event);
+        }
+
+        return new Response(null, {
+          status: 200,
+        });
+      }
+
       if (this.options.sseEnabled && method === "GET") {
-        let unsub: () => void;
+        const sessionId = this.options.sessionIdFactory(event);
+
+        if (!sessionId) {
+          return new Response("Bad Request", { status: 400 });
+        }
+
+        const abortController = new AbortController();
+
         const readable = new ReadableStream<Uint8Array>({
-          start: (controller) => {
-            unsub = this.subscribe((response) => {
+          start: async (controller) => {
+            const session = this.openSession(sessionId);
+
+            for await (const ctl of session.consume(abortController.signal)) {
+              const { message, ack } = ctl;
               controller.enqueue(
                 new DataEventSourceEncoder().encode({
-                  data: JSON.stringify(response),
+                  data: JSON.stringify(message),
                 }),
               );
-            });
+              ack();
+            }
           },
           cancel: () => {
-            unsub();
+            abortController.abort();
           },
         });
 
