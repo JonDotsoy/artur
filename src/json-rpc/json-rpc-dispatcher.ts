@@ -129,6 +129,10 @@ export class JsonRpcDispatcher {
   }
 
   fetch = async (request: Request): Promise<Response> => {
+    const event: JsonRpcEvent = {
+      httpRequest: request,
+    };
+
     try {
       const method = request.method;
       const contentType = request.headers.get("Content-Type");
@@ -148,13 +152,11 @@ export class JsonRpcDispatcher {
         const response = Array.isArray(bodyParsed.data)
           ? await Promise.all(
               bodyParsed.data.map((req) =>
-                getResponseForPostMethod(
-                  this.request(req, { httpRequest: request }),
-                ),
+                getResponseForPostMethod(this.request(req, event)),
               ),
             )
           : await getResponseForPostMethod(
-              this.request(bodyParsed.data, { httpRequest: request }),
+              this.request(bodyParsed.data, event),
             );
 
         return new Response(
