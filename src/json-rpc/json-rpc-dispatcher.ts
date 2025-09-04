@@ -40,7 +40,9 @@ type Options = {
   /** Whether Server-Sent Events (SSE) support is enabled for real-time communication */
   sseEnabled: boolean;
   /** Factory function to extract session ID from JSON-RPC events */
-  sessionIdFactory: (event: JsonRpcEvent) => string | null;
+  sessionIdFactory: (
+    event: JsonRpcEvent,
+  ) => string | null | Promise<string | null>;
 };
 
 /**
@@ -414,7 +416,7 @@ export class JsonRpcDispatcher {
       }
 
       if (this.options.sseEnabled && method === "PUT") {
-        const sessionId = this.options.sessionIdFactory(event);
+        const sessionId = await this.options.sessionIdFactory(event);
 
         if (!sessionId) {
           return new Response("Bad Request", { status: 400 });
@@ -445,7 +447,7 @@ export class JsonRpcDispatcher {
       }
 
       if (this.options.sseEnabled && method === "GET") {
-        const sessionId = this.options.sessionIdFactory(event);
+        const sessionId = await this.options.sessionIdFactory(event);
 
         if (!sessionId) {
           return new Response("Bad Request", { status: 400 });
