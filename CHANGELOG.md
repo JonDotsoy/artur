@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/JonDotsoy/artur/compare/artur-v1.7.0...artur-v1.7.1) (2025-09-05)
+
+
+### Bug Fixes
+
+* remove outdated dependency on @jondotsoy/symbol.initialize ([2c44441](https://github.com/JonDotsoy/artur/commit/2c44441a88814da434e205175fbd4fa45dbe55f9))
+
 ## [1.7.0](https://github.com/JonDotsoy/artur/compare/artur-v1.6.0...artur-v1.7.0) (2025-09-05)
 
 
