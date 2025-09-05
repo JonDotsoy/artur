@@ -21,6 +21,12 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/esm/index.js"
     },
+    "./http": {
+      "import": "./lib/esm/http/index.js",
+      "require": "./lib/cjs/http/index.js",
+      "types": "./lib/types/http/index.d.ts",
+      "default": "./lib/esm/http/index.js"
+    },
     "./http/router": {
       "import": "./lib/esm/http/router.js",
       "require": "./lib/cjs/http/router.js",
@@ -32,10 +38,15 @@
       "require": "./lib/cjs/http/access-control.js",
       "types": "./lib/types/http/access-control.d.ts",
       "default": "./lib/esm/http/access-control.js"
+    },
+    "./json-rpc": {
+      "import": "./lib/esm/json-rpc/index.js",
+      "require": "./lib/cjs/json-rpc/index.js",
+      "types": "./lib/types/json-rpc/index.d.ts",
+      "default": "./lib/esm/json-rpc/index.js"
     }
   },
   "devDependencies": {
-    "@jondotsoy/utils-js": "^0.6.0",
     "@types/bun": "latest",
     "@types/event-source-polyfill": "^1.0.5",
     "dispose-with-controller": "^0.1.1",
@@ -49,6 +60,7 @@
   "dependencies": {
     "@jondotsoy/decorate": "^0.1.4",
     "@jondotsoy/symbol.initialize": "^0.1.2",
+    "@jondotsoy/utils-js": "^0.15.0",
     "urlpattern-polyfill": "^10.0.0",
     "zod": "^4.1.0"
   },

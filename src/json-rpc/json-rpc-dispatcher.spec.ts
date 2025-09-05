@@ -72,31 +72,6 @@ describe("JsonRpcDispatcher", () => {
       params: {},
     });
   });
-  test("should handle method execution and emit response through subscription", async () => {
-    const p = Promise.withResolvers<JsonRpcResponse>();
-    dispatcher.use("testMethod", (params, request) => {
-      return {
-        ok: true,
-      };
-    });
-    dispatcher.subscribe((response) => {
-      p.resolve(response);
-    });
-    dispatcher.request({
-      id: 1,
-      jsonrpc: "2.0",
-      method: "testMethod",
-      params: {},
-    });
-    const response = await p.promise;
-    expect(response).toMatchObject({
-      id: 1,
-      jsonrpc: "2.0",
-      result: {
-        ok: true,
-      },
-    });
-  });
   test("should return response promise directly from request method", async () => {
     dispatcher.use("testMethod", (params, request) => {
       return {
@@ -214,7 +189,7 @@ describe("JsonRpcDispatcher", () => {
     });
 
     const response = await dispatcher.fetch(
-      new Request("http://localhost", {
+      new Request("http://localhost?json_rpc_token=test-token", {
         method: "GET",
         headers: {
           Accept: "text/event-stream",
@@ -232,7 +207,7 @@ describe("JsonRpcDispatcher", () => {
     );
 
     await dispatcher.fetch(
-      new Request("http://localhost", {
+      new Request("http://localhost?json_rpc_token=test-token", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -299,5 +274,142 @@ describe("Router integration", () => {
         ok: true,
       },
     });
+  });
+});
+
+describe("Session management", () => {
+  test("should handle requests when session has no registered methods", async () => {
+    const dispatcher = new JsonRpcDispatcher();
+
+    const session = dispatcher.openSession("test-session-1");
+
+    await session.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    });
+  });
+
+  test("should execute method and return response via session consume", async () => {
+    const dispatcher = new JsonRpcDispatcher();
+
+    dispatcher.registerMethod("testMethod", (params, request) => {
+      return {
+        ok: true,
+      };
+    });
+
+    const session = dispatcher.openSession("test-session-2");
+
+    await session.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    });
+
+    const consuming = session.consume();
+    const { value } = await consuming.next();
+
+    expect(value).toMatchObject({
+      message: {
+        id: 1,
+        jsonrpc: "2.0",
+        result: {
+          ok: true,
+        },
+      },
+      ack: expect.any(Function),
+    });
+  });
+
+  test("should consume session responses with abort controller", async () => {
+    const push = mock();
+    const dispatcher = new JsonRpcDispatcher();
+
+    dispatcher.registerMethod("testMethod", (params, request) => {
+      return {
+        ok: true,
+      };
+    });
+
+    const session = dispatcher.openSession("test-session");
+
+    await session.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    });
+
+    const worker = async () => {
+      const abortController = new AbortController();
+      for await (const value of session.consume(abortController.signal)) {
+        push(value);
+        abortController.abort();
+      }
+    };
+
+    await worker();
+
+    expect(push).toHaveBeenCalledWith({
+      message: {
+        id: 1,
+        jsonrpc: "2.0",
+        result: {
+          ok: true,
+        },
+      },
+      ack: expect.any(Function),
+    });
+  });
+
+  test("should stream responses via SSE when using session tokens", async () => {
+    const push = mock();
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    dispatcher.registerMethod("testMethod", (params, request) => {
+      return {
+        ok: true,
+      };
+    });
+
+    const jsonRpcResponse = await dispatcher.fetch(
+      new Request("http://localhost/json-rpc?json_rpc_token=1", {
+        method: "GET",
+      }),
+    );
+
+    jsonRpcResponse.body?.pipeTo(
+      new WritableStream({
+        write: (chunk) => {
+          push(new TextDecoder().decode(chunk));
+        },
+      }),
+    );
+
+    const jsonRpcPutResponse = await dispatcher.fetch(
+      new Request("http://localhost/json-rpc?json_rpc_token=1", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: "2.0",
+          method: "testMethod",
+          params: {},
+        }),
+      }),
+    );
+
+    expect(jsonRpcPutResponse.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(push).toHaveBeenCalledWith(
+      'data: {"id":1,"jsonrpc":"2.0","result":{"ok":true}}\n\n',
+    );
   });
 });
