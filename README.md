@@ -229,6 +229,7 @@ rpc.registerMethod(
 - **Type Safety**: TypeScript automatically infers parameter types from validation schemas
 - **Documentation**: Schemas serve as living documentation of method interfaces
 - **Error Handling**: Validation errors return standard JSON-RPC error responses with helpful messages
+- **Output Validation**: When output validation fails, the method returns a JSON-RPC internal error (-32603) to prevent invalid responses from being sent to clients
 
 ### Configuration Options
 
