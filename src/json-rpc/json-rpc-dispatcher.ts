@@ -399,17 +399,17 @@ export class JsonRpcDispatcher {
         };
       })
       .catch((error): JsonRpcErrorResponse => {
-        return {
-          id: request.id,
-          jsonrpc: "2.0",
-          error: JsonRpcError.isJsonRpcError(error)
-            ? error.toJsonRpcResponse(request.id).error
-            : {
+        return JsonRpcError.isJsonRpcError(error)
+          ? error.toJsonRpcResponse(request.id)
+          : {
+              id: request.id,
+              jsonrpc: "2.0",
+              error: {
                 code: -32603,
                 message: "Internal error",
                 data: error,
               },
-        };
+            };
       })
       .then((response) => {
         process.resolve(response);
