@@ -6,6 +6,8 @@ import {
   type JsonRpcResponse,
 } from "./types.js";
 import { Router } from "../http/router.js";
+import { z } from "zod";
+import { expectTypeOf } from "expect-type";
 
 describe("JsonRpcError", () => {
   test("should create error with code and message", () => {
@@ -411,5 +413,84 @@ describe("Session management", () => {
     expect(push).toHaveBeenCalledWith(
       'data: {"id":1,"jsonrpc":"2.0","result":{"ok":true}}\n\n',
     );
+  });
+
+  test("should properly type-check method parameters when input validation schema is provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    dispatcher.registerMethod(
+      "testMethod",
+      (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ name: string }>();
+      },
+      {
+        inputValidation: input,
+      },
+    );
+  });
+
+  test("should properly type-check both input and output when validation schemas are provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    const output = z.object({
+      ok: z.boolean(),
+      message: z.string(),
+    });
+
+    dispatcher.registerMethod(
+      "testMethod",
+      (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ name: string }>();
+
+        return {
+          ok: true,
+          message: "Success",
+        };
+      },
+      {
+        inputValidation: input,
+        outputValidation: output,
+      },
+    );
+  });
+
+  test("should type-check parameters as unknown when only output validation is provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    const output = z.object({
+      ok: z.boolean(),
+      message: z.string(),
+    });
+
+    dispatcher.registerMethod(
+      "testMethod",
+      (params) => {
+        expectTypeOf(params).toEqualTypeOf<unknown>();
+
+        return {
+          ok: true,
+          message: "Success",
+        };
+      },
+      {
+        outputValidation: output,
+      },
+    );
+  });
+
+  test("should type-check parameters as unknown when no validation schemas are provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    dispatcher.registerMethod("testMethod", (params) => {
+      expectTypeOf(params).toEqualTypeOf<unknown>();
+    });
   });
 });
