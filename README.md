@@ -158,7 +158,7 @@ import { JsonRpcDispatcher, Router } from "artur";
 
 const rpc = new JsonRpcDispatcher();
 
-// Register RPC methods using the new registerMethod API
+// Register RPC methods using the registerMethod API
 rpc.registerMethod("add", (params: { a: number; b: number }) => {
   return params.a + params.b;
 });
@@ -167,13 +167,24 @@ rpc.registerMethod("greet", (params: { name: string }) => {
   return `Hello, ${params.name}!`;
 });
 
-// ⚠️ Legacy API (deprecated but still supported for backward compatibility)
-// rpc.use("methodName", handler);
-
 // Integrate with Router
 const router = new Router();
 router.use("POST", "/api/rpc", rpc);
 ```
+
+#### Legacy API Support
+
+The previous `use` method is still supported for backward compatibility but is deprecated:
+
+```ts
+// ⚠️ Deprecated: Use registerMethod() instead
+rpc.use("methodName", handler);
+
+// ✅ Recommended: New registerMethod() API
+rpc.registerMethod("methodName", handler);
+```
+
+The `registerMethod` API provides better TypeScript support, validation capabilities, and clearer intent for method registration.
 
 ### Input and Output Validation
 
@@ -223,6 +234,117 @@ rpc.registerMethod(
 );
 ```
 
+### Method Introspection
+
+The JSON-RPC dispatcher provides built-in introspection capabilities through the `registerListMethods` method. This allows clients to discover available methods and their schemas:
+
+```ts
+import { z } from "zod";
+
+// Register your business methods with validation
+rpc.registerMethod(
+  "user.create",
+  (params) => createUser(params),
+  {
+    inputValidation: z.object({
+      name: z.string(),
+      email: z.string().email(),
+    }),
+    outputValidation: z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+    }),
+  },
+);
+
+rpc.registerMethod(
+  "user.getById",
+  (params) => getUserById(params.id),
+  {
+    inputValidation: z.object({ id: z.string() }),
+    outputValidation: z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+    }),
+  },
+);
+
+// Register the introspection method
+rpc.registerListMethods("system.listMethods");
+
+// Optional: Hide specific methods from the list
+rpc.registerListMethods("system.listMethods", [
+  "system.listMethods", // Hide self-reference
+  "internal.debug",     // Hide internal methods
+]);
+```
+
+#### Using the List Methods Endpoint
+
+Clients can now discover available methods and their schemas:
+
+```ts
+// Request available methods
+const response = await fetch("/api/rpc", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "system.listMethods",
+    params: {},
+  }),
+});
+
+const result = await response.json();
+console.log(result);
+
+// Example response:
+// {
+//   "jsonrpc": "2.0",
+//   "id": 1,
+//   "result": {
+//     "methods": [
+//       {
+//         "name": "user.create",
+//         "params": {
+//           "type": "object",
+//           "properties": {
+//             "name": { "type": "string" },
+//             "email": { "type": "string", "format": "email" }
+//           },
+//           "required": ["name", "email"]
+//         },
+//         "result": {
+//           "type": "object",
+//           "properties": {
+//             "id": { "type": "string" },
+//             "name": { "type": "string" },
+//             "email": { "type": "string" }
+//           },
+//           "required": ["id", "name", "email"]
+//         }
+//       },
+//       {
+//         "name": "user.getById",
+//         "params": { /* JSON Schema for input */ },
+//         "result": { /* JSON Schema for output */ }
+//       }
+//     ]
+//   }
+// }
+```
+
+#### Benefits of Method Introspection
+
+- **API Discovery**: Clients can automatically discover available methods without external documentation
+- **Schema Documentation**: Each method exposes its input/output schemas as JSON Schema format
+- **Dynamic Client Generation**: Tools can generate type-safe client code from the introspection data
+- **Development Tools**: Enable better IDE support and API exploration tools
+- **Version Compatibility**: Clients can check method availability and schema changes at runtime
+
 #### Benefits of Validation
 
 - **Runtime Safety**: Invalid parameters are automatically rejected with JSON-RPC error responses
@@ -230,6 +352,7 @@ rpc.registerMethod(
 - **Documentation**: Schemas serve as living documentation of method interfaces
 - **Error Handling**: Validation errors return standard JSON-RPC error responses with helpful messages
 - **Output Validation**: When output validation fails, the method returns a JSON-RPC internal error (-32603) to prevent invalid responses from being sent to clients
+- **API Introspection**: Methods with validation schemas are automatically documented in the `system.listMethods` response
 
 ### Configuration Options
 
@@ -254,18 +377,73 @@ const rpc = new JsonRpcDispatcher({
   - HTTP header `x-json-rpc-token`
   - URL parameter `token`
 
-### Method Registration Options
+### Method Registration API
 
-When registering methods with `registerMethod()`, you can provide additional options for validation and type safety:
+The `registerMethod()` function is the primary way to register JSON-RPC method handlers. It supports optional validation and provides better TypeScript integration than the legacy `use()` method.
+
+#### Basic Method Registration
 
 ```ts
-rpc.registerMethod("methodName", handlerFunction, {
-  inputValidation: zodSchema, // Optional: Validate input parameters
-  outputValidation: zodSchema, // Optional: Validate return values
+// Simple method without validation
+rpc.registerMethod("ping", async () => "pong");
+
+// Method with typed parameters
+rpc.registerMethod("calculateSum", async (params: { numbers: number[] }) => {
+  return params.numbers.reduce((sum, num) => sum + num, 0);
+});
+
+// Method with access to request context
+rpc.registerMethod("getUserInfo", async (params, request, event) => {
+  const userId = params.userId;
+  const httpRequest = event.httpRequest; // Access HTTP context if needed
+  return await fetchUserData(userId);
 });
 ```
 
-Both validation options are optional, but when provided, they ensure runtime type safety and automatic error handling for invalid data.
+#### Method Registration with Validation
+
+```ts
+import { z } from "zod";
+
+rpc.registerMethod(
+  "user.create",
+  async (params) => {
+    // params is automatically typed based on inputValidation schema
+    const user = await createUser(params);
+    return user;
+  },
+  {
+    inputValidation: z.object({
+      name: z.string().min(1, "Name is required"),
+      email: z.string().email("Invalid email format"),
+      age: z.number().min(18, "Must be at least 18"),
+    }),
+    outputValidation: z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+      age: z.number(),
+      createdAt: z.date(),
+    }),
+  }
+);
+```
+
+#### Method Registration Options
+
+When registering methods with `registerMethod()`, you can provide these options:
+
+- **`inputValidation`** (optional): Zod schema to validate input parameters
+  - Automatically validates parameters before calling the handler
+  - Returns JSON-RPC error (-32602 Invalid params) if validation fails
+  - Provides automatic TypeScript typing for the params argument
+
+- **`outputValidation`** (optional): Zod schema to validate return values
+  - Validates the handler's return value before sending the response
+  - Returns JSON-RPC error (-32603 Internal error) if validation fails
+  - Helps catch bugs and ensures consistent API responses
+
+Both validation options are optional but recommended for production applications to ensure data integrity and provide better developer experience.
 
 ### Multiple Transport Methods
 
@@ -556,6 +734,9 @@ rpc.registerMethod(
     inputValidation: sendMessageSchema,
   },
 );
+
+// Register method introspection for API discovery
+rpc.registerListMethods("system.listMethods");
 
 // Set up the router
 const router = new Router();
