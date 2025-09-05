@@ -9,7 +9,7 @@ import type {
   ExtractValidationType,
 } from "./types.js";
 import { JsonRpcError } from "./types.js";
-import { z } from "zod";
+import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
 import { type RouterOptionsDef } from "../http/types/router-options-def.js";
 import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.js";
@@ -336,6 +336,34 @@ export class JsonRpcDispatcher {
     );
 
     return session;
+  }
+
+  registerListMethods(
+    methodNames: string,
+    hiddenMethods: string[] = [methodNames],
+  ) {
+    this.registerMethod(methodNames, async () => {
+      const methods: { name: string; params: any; result: any }[] = [];
+      for (const name of this.handlers.keys()) {
+        if (hiddenMethods.includes(name)) continue;
+        const validations = this.paramsValidations.get(name);
+        const method = {
+          name,
+          params:
+            validations?.input && validations?.input instanceof z.ZodType
+              ? toJSONSchema(validations.input)
+              : {},
+          result:
+            validations?.output && validations?.output instanceof z.ZodType
+              ? toJSONSchema(validations.output)
+              : {},
+        };
+        methods.push(method);
+      }
+      return {
+        methods,
+      };
+    });
   }
 
   /**
