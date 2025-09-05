@@ -3,8 +3,6 @@ import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
 import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
 import type { Fetch } from "./types/fetch-type.js";
-import { urlPatternFrom } from "./utils/url-pattern-from.js";
-import type { Route as DeprecatedRoute } from "./types/route.js";
 import type { Middleware } from "./types/middleware.js";
 import { Route } from "./route.js";
 import {
