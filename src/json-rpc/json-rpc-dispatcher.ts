@@ -345,10 +345,29 @@ export class JsonRpcDispatcher {
    * @param event - Optional event context for the request
    * @returns Object containing the response promise
    */
-  request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
+  request<P = any>(
+    request: JsonRpcRequest<P>,
+    event?: JsonRpcEvent,
+  ): { response: Promise<JsonRpcResponse> } {
     const handler = this.handlers.get(request.method);
+    const validation = this.paramsValidations.get(request.method) ?? null;
 
     const process = Promise.withResolvers<JsonRpcResponse>();
+
+    if (validation?.input) {
+      const parsed = validation.input.safeParse(request.params);
+      if (!parsed.success) {
+        const error = parsed.error;
+
+        const jsonRpcError = new JsonRpcError(-32602, "Invalid params", error);
+
+        process.resolve(jsonRpcError.toJsonRpcResponse(request.id));
+
+        return {
+          response: process.promise,
+        };
+      }
+    }
 
     this.requests.add(process.promise);
 
@@ -357,10 +376,26 @@ export class JsonRpcDispatcher {
       .then(async (handler): Promise<JsonRpcResultResponse> => {
         if (!handler)
           throw new JsonRpcError(-32601, `Method not found: ${request.method}`);
+
+        const result = await handler(params, request, event ?? {});
+
+        if (validation?.output) {
+          const parsed = validation.output.safeParse(result);
+          if (!parsed.success) {
+            const error = parsed.error;
+
+            console.error(
+              `Output validation failed for method ${request.method}:`,
+              error,
+            );
+            throw new JsonRpcError(-32603, "Internal error");
+          }
+        }
+
         return {
           id: request.id,
           jsonrpc: "2.0",
-          result: await handler(params, request, event ?? {}),
+          result: result,
         };
       })
       .catch((error): JsonRpcErrorResponse => {
@@ -368,11 +403,7 @@ export class JsonRpcDispatcher {
           id: request.id,
           jsonrpc: "2.0",
           error: JsonRpcError.isJsonRpcError(error)
-            ? {
-                code: error.code,
-                message: error.message,
-                data: error.data,
-              }
+            ? error.toJsonRpcResponse(request.id).error
             : {
                 code: -32603,
                 message: "Internal error",
