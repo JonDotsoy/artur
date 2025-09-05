@@ -287,9 +287,62 @@ export class JsonRpcDispatcher {
   }
 
   /**
-   * Registers a method handler for JSON-RPC requests.
-   * @param method - The method name to register
-   * @param handler - The handler function for the method
+   * Registers a method handler for JSON-RPC requests with optional input/output validation.
+   *
+   * This method allows you to register handlers for specific JSON-RPC method names.
+   * You can optionally provide Zod validation schemas for both input parameters and
+   * output results to ensure type safety and data validation.
+   *
+   * @template InputValidation - Type of the input validation schema (extends Validation<any>)
+   * @template OutputValidation - Type of the output validation schema (extends Validation<any>)
+   *
+   * @param method - The JSON-RPC method name to register (e.g., 'user.getById', 'system.info')
+   * @param handler - The async function that handles the JSON-RPC request. Receives:
+   *                  - params: The request parameters (validated if inputValidation is provided)
+   *                  - request: The full JSON-RPC request object
+   *                  - event: Additional event context (e.g., HTTP request info)
+   * @param options - Optional configuration object for validation
+   * @param options.inputValidation - Zod schema for validating input parameters before calling the handler.
+   *                                  If validation fails, returns a JSON-RPC error (-32602 Invalid params)
+   * @param options.outputValidation - Zod schema for validating the handler's return value.
+   *                                   If validation fails, returns a JSON-RPC error (-32603 Internal error)
+   *
+   * @example
+   * ```typescript
+   * // Simple method without validation
+   * dispatcher.registerMethod('ping', async () => 'pong');
+   *
+   * // Method with input validation
+   * dispatcher.registerMethod(
+   *   'user.getById',
+   *   async (params) => getUserById(params.id),
+   *   {
+   *     inputValidation: z.object({ id: z.string() })
+   *   }
+   * );
+   *
+   * // Method with both input and output validation
+   * dispatcher.registerMethod(
+   *   'user.create',
+   *   async (params) => createUser(params),
+   *   {
+   *     inputValidation: z.object({
+   *       name: z.string(),
+   *       email: z.string().email()
+   *     }),
+   *     outputValidation: z.object({
+   *       id: z.string(),
+   *       name: z.string(),
+   *       email: z.string()
+   *     })
+   *   }
+   * );
+   * ```
+   *
+   * @throws Will not throw directly, but validation errors are returned as JSON-RPC error responses
+   *
+   * @see {@link use} - Deprecated alias for this method
+   * @see {@link registerListMethods} - For registering introspection methods
    */
   registerMethod<
     InputValidation extends Validation<any> = any,
@@ -338,6 +391,33 @@ export class JsonRpcDispatcher {
     return session;
   }
 
+  /**
+   * Registers a JSON-RPC method that returns a list of available methods and their schemas.
+   * This method provides introspection capabilities for JSON-RPC clients by exposing
+   * the available methods along with their parameter and result validation schemas.
+   *
+   * @param methodNames - The name of the method to register (typically 'system.listMethods')
+   * @param hiddenMethods - Array of method names to exclude from the returned list.
+   *                        Defaults to an array containing the methodNames parameter
+   *                        to prevent self-reference in the list.
+   *
+   * @example
+   * ```typescript
+   * // Register a listMethods endpoint
+   * dispatcher.registerListMethods('system.listMethods');
+   *
+   * // Register with custom hidden methods
+   * dispatcher.registerListMethods('system.listMethods', ['system.listMethods', 'internal.debug']);
+   * ```
+   *
+   * @remarks
+   * The returned method list includes:
+   * - `name`: The method name
+   * - `params`: JSON Schema for input parameters (if validation is defined)
+   * - `result`: JSON Schema for output result (if validation is defined)
+   *
+   * Methods without validation will have empty objects for params and result schemas.
+   */
   registerListMethods(
     methodNames: string,
     hiddenMethods: string[] = [methodNames],
