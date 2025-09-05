@@ -428,6 +428,99 @@ describe("JsonRpcDispatcher", () => {
       },
     });
   });
+
+  test("test1", async () => {
+    const dispatcher = new JsonRpcDispatcher();
+
+    dispatcher.registerMethod("testMethod", mock(), {
+      inputValidation: z.object({ name: z.string() }),
+    });
+
+    dispatcher.registerListMethods("rpc.discover");
+  });
+
+  test("test2", async () => {
+    const dispatcher = new JsonRpcDispatcher();
+
+    dispatcher.registerMethod("testMethod", mock(), {
+      inputValidation: z.object({ name: z.string() }),
+    });
+
+    dispatcher.registerListMethods("rpc.discover");
+
+    const response = await dispatcher.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "rpc.discover",
+      params: {},
+    }).response;
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      result: {
+        methods: [
+          {
+            name: "testMethod",
+            params: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+              },
+              required: ["name"],
+              additionalProperties: false,
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  test("test3", async () => {
+    const dispatcher = new JsonRpcDispatcher();
+
+    dispatcher.registerMethod("testMethod", mock(), {
+      inputValidation: z.object({ name: z.string() }),
+      outputValidation: z.object({ ok: z.boolean() }),
+    });
+
+    dispatcher.registerListMethods("rpc.discover");
+
+    const response = await dispatcher.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "rpc.discover",
+      params: {},
+    }).response;
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      result: {
+        methods: [
+          {
+            name: "testMethod",
+            params: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+              },
+              required: ["name"],
+              additionalProperties: false,
+            },
+            result: {
+              type: "object",
+              properties: {
+                ok: { type: "boolean" },
+              },
+              required: ["ok"],
+              additionalProperties: false,
+            },
+          },
+        ],
+      },
+    });
+  });
 });
 
 describe("Router integration", () => {
