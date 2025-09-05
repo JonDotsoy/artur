@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.0](https://github.com/JonDotsoy/artur/compare/artur-v1.7.1...artur-v1.8.0) (2025-09-05)
+
+
+### Features
+
+* add input and output validation for JSON-RPC requests in JsonRpcDispatcher ([c785aee](https://github.com/JonDotsoy/artur/commit/c785aeee3b4e81495b832ad2f726bfbd70bff91e))
+* add method registration for listing available methods in JsonRpcDispatcher ([e6efde2](https://github.com/JonDotsoy/artur/commit/e6efde23f60909b35d440869cc95d52c4c9955c3))
+* add toJsonRpcResponse method to JsonRpcError class for improved error handling ([6950682](https://github.com/JonDotsoy/artur/commit/69506821eb68ef1346ca5467d4fea9d1f084b096))
+* add validation types for Zod integration ([78803ed](https://github.com/JonDotsoy/artur/commit/78803edafdf3206858616ee57f2ce7d61cd8ca0b))
+* enhance method registration with input and output validation support ([5e73124](https://github.com/JonDotsoy/artur/commit/5e7312419305b871cf483a3bd47627e96749c617))
+
+
+### Bug Fixes
+
+* improve error handling in JsonRpcDispatcher by simplifying error response structure ([f38c97e](https://github.com/JonDotsoy/artur/commit/f38c97e6e5337c8733e13c5f5150503fefe5369b))
+* simplify error handling in JsonRpcDispatcher by using JsonRpcError for internal errors ([99b717c](https://github.com/JonDotsoy/artur/commit/99b717c65c541776967b044ed5e8b89db83aeacf))
+* update output validation test to handle invalid output scenario ([913fd92](https://github.com/JonDotsoy/artur/commit/913fd92bf711d2d185bb8d46cb2a82b8d899abe2))
+
 ## [1.7.1](https://github.com/JonDotsoy/artur/compare/artur-v1.7.0...artur-v1.7.1) (2025-09-05)
 
 
