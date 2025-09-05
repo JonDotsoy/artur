@@ -395,16 +395,22 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("should return internal error when output validation fails", async () => {
-    const handler = mock();
     const dispatcher = new JsonRpcDispatcher();
 
     const output = z.object({
       message: z.string(),
     });
 
-    dispatcher.registerMethod("testMethod", handler, {
-      outputValidation: output,
-    });
+    // Handler returns invalid output (missing message property)
+    dispatcher.registerMethod(
+      "testMethod",
+      () => {
+        return { invalidProperty: "value" } as any; // This will fail validation at runtime
+      },
+      {
+        outputValidation: output,
+      },
+    );
 
     const response = await dispatcher.request({
       id: 1,
