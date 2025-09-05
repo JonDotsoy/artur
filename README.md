@@ -167,13 +167,68 @@ rpc.registerMethod("greet", (params: { name: string }) => {
   return `Hello, ${params.name}!`;
 });
 
-// Legacy API (deprecated but still supported)
+// ⚠️ Legacy API (deprecated but still supported for backward compatibility)
 // rpc.use("methodName", handler);
 
 // Integrate with Router
 const router = new Router();
 router.use("POST", "/api/rpc", rpc);
 ```
+
+### Input and Output Validation
+
+Artur's JSON-RPC dispatcher supports type-safe parameter validation using Zod schemas. This ensures that method parameters are validated at runtime and provides better type safety:
+
+```ts
+import { z } from "zod";
+
+// Define validation schemas
+const addParamsSchema = z.object({
+  a: z.number(),
+  b: z.number(),
+});
+
+const addResultSchema = z.number();
+
+const greetParamsSchema = z.object({
+  name: z.string().min(1),
+  greeting: z.string().optional().default("Hello"),
+});
+
+const greetResultSchema = z.string();
+
+// Register methods with validation
+rpc.registerMethod(
+  "add",
+  (params, request, event) => {
+    // params is automatically typed as { a: number; b: number }
+    return params.a + params.b;
+  },
+  {
+    inputValidation: addParamsSchema,
+    outputValidation: addResultSchema,
+  },
+);
+
+rpc.registerMethod(
+  "greet",
+  (params, request, event) => {
+    // params is automatically typed as { name: string; greeting?: string }
+    return `${params.greeting}, ${params.name}!`;
+  },
+  {
+    inputValidation: greetParamsSchema,
+    outputValidation: greetResultSchema,
+  },
+);
+```
+
+#### Benefits of Validation
+
+- **Runtime Safety**: Invalid parameters are automatically rejected with JSON-RPC error responses
+- **Type Safety**: TypeScript automatically infers parameter types from validation schemas
+- **Documentation**: Schemas serve as living documentation of method interfaces
+- **Error Handling**: Validation errors return standard JSON-RPC error responses with helpful messages
 
 ### Configuration Options
 
@@ -197,6 +252,19 @@ const rpc = new JsonRpcDispatcher({
   - URL parameter `json_rpc_token`
   - HTTP header `x-json-rpc-token`
   - URL parameter `token`
+
+### Method Registration Options
+
+When registering methods with `registerMethod()`, you can provide additional options for validation and type safety:
+
+```ts
+rpc.registerMethod("methodName", handlerFunction, {
+  inputValidation: zodSchema, // Optional: Validate input parameters
+  outputValidation: zodSchema, // Optional: Validate return values
+});
+```
+
+Both validation options are optional, but when provided, they ensure runtime type safety and automatic error handling for invalid data.
 
 ### Multiple Transport Methods
 
@@ -369,6 +437,41 @@ rpc.registerMethod("validateUser", (params: { userId: string }) => {
 });
 ```
 
+#### Validation Error Handling
+
+When using input/output validation, validation errors are automatically converted to JSON-RPC errors:
+
+```ts
+import { z } from "zod";
+
+const userSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  age: z.number().min(18, "Must be at least 18 years old"),
+});
+
+rpc.registerMethod(
+  "createUser",
+  (params) => {
+    // This method will only execute if validation passes
+    return { id: "user123", ...params };
+  },
+  {
+    inputValidation: userSchema,
+  },
+);
+
+// Invalid request will automatically return:
+// {
+//   "jsonrpc": "2.0",
+//   "id": 1,
+//   "error": {
+//     "code": -32602,
+//     "message": "Invalid params",
+//     "data": { /* Zod validation errors */ }
+//   }
+// }
+```
+
 #### Standard JSON-RPC Error Codes
 
 - **-32700**: Parse error (invalid JSON)
@@ -379,13 +482,26 @@ rpc.registerMethod("validateUser", (params: { userId: string }) => {
 
 ### Real-time Example: Chat Application
 
-Here's a complete example showing how to build a real-time chat application:
+Here's a complete example showing how to build a real-time chat application with validation:
 
 ```ts
 import { JsonRpcDispatcher, Router } from "artur";
+import { z } from "zod";
 
 const rpc = new JsonRpcDispatcher({
   sseEnabled: true,
+});
+
+// Validation schemas
+const joinRoomSchema = z.object({
+  room: z.string().min(1, "Room name is required"),
+  user: z.string().min(1, "Username is required"),
+});
+
+const sendMessageSchema = z.object({
+  room: z.string().min(1, "Room name is required"),
+  message: z.string().min(1, "Message cannot be empty"),
+  user: z.string().min(1, "Username is required"),
 });
 
 // Store active chat sessions
@@ -394,7 +510,7 @@ const chatSessions = new Map<string, Set<string>>();
 // Join a chat room
 rpc.registerMethod(
   "chat.join",
-  (params: { room: string; user: string }, request, event) => {
+  (params, request, event) => {
     const sessionId = rpc.options.sessionIdFactory(event);
     if (!sessionId) throw new JsonRpcError(-32602, "Session ID required");
 
@@ -405,12 +521,15 @@ rpc.registerMethod(
     chatSessions.get(params.room)?.add(sessionId);
     return { joined: params.room, user: params.user };
   },
+  {
+    inputValidation: joinRoomSchema,
+  },
 );
 
 // Send a message to all room participants
 rpc.registerMethod(
   "chat.send",
-  async (params: { room: string; message: string; user: string }) => {
+  async (params) => {
     const roomSessions = chatSessions.get(params.room);
     if (!roomSessions) throw new JsonRpcError(1001, "Room not found");
 
@@ -431,6 +550,9 @@ rpc.registerMethod(
     }
 
     return { sent: true };
+  },
+  {
+    inputValidation: sendMessageSchema,
   },
 );
 
@@ -494,7 +616,54 @@ import {
   type JsonRpcResultResponse,
   type JsonRpcErrorResponse,
   type JsonRpcHandler,
+  type JsonRpcEvent,
+  type Validation,
+  type ExtractValidationType,
 } from "artur/json-rpc";
+```
+
+#### Type Definitions
+
+- **`JsonRpcRequest<T>`**: Represents a JSON-RPC 2.0 request with typed parameters
+- **`JsonRpcResponse<T, R>`**: Union type for success and error responses
+- **`JsonRpcHandler<P, R>`**: Function signature for method handlers
+- **`JsonRpcEvent`**: Context object containing HTTP request information
+- **`Validation<T>`**: Generic validation interface (compatible with Zod)
+- **`ExtractValidationType<A>`**: Utility type to extract TypeScript types from validation schemas
+
+#### Advanced Type Usage
+
+```ts
+import { z } from "zod";
+import type { ExtractValidationType } from "artur/json-rpc";
+
+// Define schemas
+const userParamsSchema = z.object({
+  name: z.string(),
+  email: z.string().email(),
+});
+
+const userResultSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  createdAt: z.date(),
+});
+
+// Extract types
+type UserParams = ExtractValidationType<typeof userParamsSchema>;
+type UserResult = ExtractValidationType<typeof userResultSchema>;
+
+// Type-safe method handler
+const createUserHandler: JsonRpcHandler<UserParams, UserResult> = (params) => {
+  // params is fully typed as { name: string; email: string }
+  return {
+    id: crypto.randomUUID(),
+    name: params.name,
+    email: params.email,
+    createdAt: new Date(),
+  };
+};
 ```
 
 > **Note**: The types can be imported from the main package in future versions. Currently, they're available from the JSON-RPC submodule.

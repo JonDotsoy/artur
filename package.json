@@ -1,6 +1,6 @@
 {
   "name": "artur",
-  "description": "Framework to write lite apps",
+  "description": "Lightweight web framework with URLPattern router, middleware support, and JSON-RPC 2.0 protocol for Node.js and Bun",
   "version": "1.7.1",
   "type": "module",
   "module": "./lib/esm/index.js",
