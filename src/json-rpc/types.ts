@@ -50,3 +50,12 @@ export type JsonRpcHandler<P = any, R = any> = (
   request: JsonRpcRequest,
   event: JsonRpcEvent,
 ) => Promise<R> | R;
+
+export type ZodValidation<T> = {
+  safeParse: (data: any) => { success: boolean; data?: T; error?: any };
+};
+
+export type Validation<T> = ZodValidation<T>;
+
+export type ExtractValidationType<A> =
+  A extends Validation<infer U> ? U : unknown;
