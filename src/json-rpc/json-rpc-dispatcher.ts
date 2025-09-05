@@ -5,6 +5,8 @@ import type {
   JsonRpcErrorResponse,
   JsonRpcHandler,
   JsonRpcEvent,
+  Validation,
+  ExtractValidationType,
 } from "./types.js";
 import { JsonRpcError } from "./types.js";
 import { z } from "zod";
@@ -249,6 +251,11 @@ export class JsonRpcDispatcher {
   private handlers = new Map<string, JsonRpcHandler>();
   /** Set of active request promises for cleanup tracking */
   private requests = new Set<Promise<JsonRpcResponse>>();
+  /** Map of method names to their parameter validation schemas */
+  private paramsValidations = new Map<
+    string,
+    { input?: Validation<any>; output?: Validation<any> }
+  >();
 
   /** Configuration options for the dispatcher */
   private options: Options;
@@ -284,11 +291,27 @@ export class JsonRpcDispatcher {
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
-  registerMethod<P = any, R = any>(
+  registerMethod<
+    InputValidation extends Validation<any> = any,
+    OutputValidation extends Validation<any> = any,
+  >(
     method: string,
-    handler: JsonRpcHandler<P, R>,
+    handler: JsonRpcHandler<
+      ExtractValidationType<InputValidation>,
+      ExtractValidationType<OutputValidation>
+    >,
+    options?: {
+      inputValidation?: InputValidation;
+      outputValidation?: OutputValidation;
+    },
   ): void {
     this.handlers.set(method, handler);
+    if (options?.inputValidation || options?.outputValidation) {
+      this.paramsValidations.set(method, {
+        input: options.inputValidation,
+        output: options.outputValidation,
+      });
+    }
   }
 
   /**
@@ -296,7 +319,7 @@ export class JsonRpcDispatcher {
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
-  use<P = any, R = any>(method: string, handler: JsonRpcHandler<P, R>): void {
+  use(method: string, handler: JsonRpcHandler<any, any>): void {
     this.registerMethod(method, handler);
   }
 
