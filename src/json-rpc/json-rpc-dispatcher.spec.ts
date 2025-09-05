@@ -229,6 +229,199 @@ describe("JsonRpcDispatcher", () => {
       'data: {"id":1,"jsonrpc":"2.0","result":{"ok":true}}\n\n',
     );
   });
+
+  test("should properly type-check method parameters when input validation schema is provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    dispatcher.registerMethod(
+      "testMethod",
+      (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ name: string }>();
+      },
+      {
+        inputValidation: input,
+      },
+    );
+  });
+
+  test("should properly type-check both input and output when validation schemas are provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    const output = z.object({
+      ok: z.boolean(),
+      message: z.string(),
+    });
+
+    dispatcher.registerMethod(
+      "testMethod",
+      (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ name: string }>();
+
+        return {
+          ok: true,
+          message: "Success",
+        };
+      },
+      {
+        inputValidation: input,
+        outputValidation: output,
+      },
+    );
+  });
+
+  test("should type-check parameters as unknown when only output validation is provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    const output = z.object({
+      ok: z.boolean(),
+      message: z.string(),
+    });
+
+    dispatcher.registerMethod(
+      "testMethod",
+      (params) => {
+        expectTypeOf(params).toEqualTypeOf<unknown>();
+
+        return {
+          ok: true,
+          message: "Success",
+        };
+      },
+      {
+        outputValidation: output,
+      },
+    );
+  });
+
+  test("should type-check parameters as unknown when no validation schemas are provided", () => {
+    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+
+    dispatcher.registerMethod("testMethod", (params) => {
+      expectTypeOf(params).toEqualTypeOf<unknown>();
+    });
+  });
+
+  test("should accept valid input parameters when input validation is provided", async () => {
+    const handler = mock();
+    const dispatcher = new JsonRpcDispatcher();
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    dispatcher.registerMethod("testMethod", handler, {
+      inputValidation: input,
+    });
+
+    expect(async () => {
+      await dispatcher.request({
+        id: 1,
+        jsonrpc: "2.0",
+        method: "testMethod",
+        params: {
+          name: "Artur",
+        },
+      }).response;
+    }).not.toThrow();
+
+    expect(handler).toHaveBeenCalled();
+  });
+
+  test("should return validation error when input parameters are invalid", async () => {
+    const handler = mock();
+    const dispatcher = new JsonRpcDispatcher();
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    dispatcher.registerMethod("testMethod", handler, {
+      inputValidation: input,
+    });
+
+    const response = await dispatcher.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    }).response;
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      error: {
+        code: -32602,
+        message: "Invalid params",
+      },
+    });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  test("should not invoke handler when input validation fails", async () => {
+    const handler = mock();
+    const dispatcher = new JsonRpcDispatcher();
+
+    const input = z.object({
+      name: z.string(),
+    });
+
+    dispatcher.registerMethod("testMethod", handler, {
+      inputValidation: input,
+    });
+
+    const response = await dispatcher.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    }).response;
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      error: {
+        code: -32602,
+        message: "Invalid params",
+      },
+    });
+  });
+
+  test("should return internal error when output validation fails", async () => {
+    const handler = mock();
+    const dispatcher = new JsonRpcDispatcher();
+
+    const output = z.object({
+      message: z.string(),
+    });
+
+    dispatcher.registerMethod("testMethod", handler, {
+      outputValidation: output,
+    });
+
+    const response = await dispatcher.request({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    }).response;
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      error: {
+        code: -32603,
+        message: "Internal error",
+      },
+    });
+  });
 });
 
 describe("Router integration", () => {
@@ -413,84 +606,5 @@ describe("Session management", () => {
     expect(push).toHaveBeenCalledWith(
       'data: {"id":1,"jsonrpc":"2.0","result":{"ok":true}}\n\n',
     );
-  });
-
-  test("should properly type-check method parameters when input validation schema is provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
-
-    const input = z.object({
-      name: z.string(),
-    });
-
-    dispatcher.registerMethod(
-      "testMethod",
-      (params) => {
-        expectTypeOf(params).toEqualTypeOf<{ name: string }>();
-      },
-      {
-        inputValidation: input,
-      },
-    );
-  });
-
-  test("should properly type-check both input and output when validation schemas are provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
-
-    const input = z.object({
-      name: z.string(),
-    });
-
-    const output = z.object({
-      ok: z.boolean(),
-      message: z.string(),
-    });
-
-    dispatcher.registerMethod(
-      "testMethod",
-      (params) => {
-        expectTypeOf(params).toEqualTypeOf<{ name: string }>();
-
-        return {
-          ok: true,
-          message: "Success",
-        };
-      },
-      {
-        inputValidation: input,
-        outputValidation: output,
-      },
-    );
-  });
-
-  test("should type-check parameters as unknown when only output validation is provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
-
-    const output = z.object({
-      ok: z.boolean(),
-      message: z.string(),
-    });
-
-    dispatcher.registerMethod(
-      "testMethod",
-      (params) => {
-        expectTypeOf(params).toEqualTypeOf<unknown>();
-
-        return {
-          ok: true,
-          message: "Success",
-        };
-      },
-      {
-        outputValidation: output,
-      },
-    );
-  });
-
-  test("should type-check parameters as unknown when no validation schemas are provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
-
-    dispatcher.registerMethod("testMethod", (params) => {
-      expectTypeOf(params).toEqualTypeOf<unknown>();
-    });
   });
 });
