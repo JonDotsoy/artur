@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.7.0](https://github.com/JonDotsoy/artur/compare/artur-v1.6.0...artur-v1.7.0) (2025-09-05)
+
+
+### Features
+
+* enhance JSON-RPC with session management, SSE streaming, and improved documentation ([#36](https://github.com/JonDotsoy/artur/issues/36)) ([98bce48](https://github.com/JonDotsoy/artur/commit/98bce485fe62b49eae54c6e53023154eadc3cab8))
+* enhance JsonRpcHandler to accept event parameter for improved request handling ([c1c7505](https://github.com/JonDotsoy/artur/commit/c1c7505a37e6d0a1b9e823341cacdb2e19283ea1))
+* implement session management with SSE support and request handling ([b0237b0](https://github.com/JonDotsoy/artur/commit/b0237b0ebf83989e3c7bcf003a2b30d53ac0f552))
+
+
+### Bug Fixes
+
+* add error logging for JSON-RPC request processing ([7e5d920](https://github.com/JonDotsoy/artur/commit/7e5d920d530491ef780c87362cdb08606aaab6e7))
+* add missing exports for http and json-rpc modules in package.json ([a5e82d0](https://github.com/JonDotsoy/artur/commit/a5e82d0eabbc68e5bed7995928fa012313242b20))
+* correct import path for customOptionsSymbol to include file extension ([4d0c4b8](https://github.com/JonDotsoy/artur/commit/4d0c4b8bd5e6aab4b45df2c54e7fbc34faf7ad25))
+* import JsonRpcEvent type for improved type safety ([f73e248](https://github.com/JonDotsoy/artur/commit/f73e248587c22df6b3ee969f68d6569c477af205))
+* remove direct exports from index.ts and consolidate in http/index.ts ([bed0c01](https://github.com/JonDotsoy/artur/commit/bed0c01645769fc8d286b0b58743d06e67cb299f))
+* update fetch method to use JsonRpcEvent for improved request handling ([ab83ed0](https://github.com/JonDotsoy/artur/commit/ab83ed0394061e877ef61701b42d5cb962a30f23))
+* update module and moduleResolution to use node16 for compatibility ([773601e](https://github.com/JonDotsoy/artur/commit/773601e4ceef6ac40a3d234fcca618f329716aa7))
+* update request method handling to support SSE-enabled PUT requests ([cd34d46](https://github.com/JonDotsoy/artur/commit/cd34d46d471f78e722c50129d4dee024dab647d3))
+* update sessionIdFactory to return a Promise for async handling ([949b8ee](https://github.com/JonDotsoy/artur/commit/949b8eebb09e01f3cd1c67ab346b8f0f0416fa42))
+
 ## [1.6.0](https://github.com/JonDotsoy/artur/compare/artur-v1.5.1...artur-v1.6.0) (2025-09-01)
 
 
