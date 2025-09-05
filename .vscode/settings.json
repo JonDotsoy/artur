@@ -1,6 +1,7 @@
 {
   "chat.tools.terminal.autoApprove": {
     "bun fmt": true,
+    "bun test": true,
     "rm": false,
     "rmdir": false,
     "del": false,
