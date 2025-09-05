@@ -292,7 +292,7 @@ export class JsonRpcDispatcher {
   }
 
   /**
-   * @deprecated Use registerMethod() instead. This method is kept for backward compatibility.
+   * @deprecated Use {@link registerMethod}() instead. This method is kept for backward compatibility.
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
