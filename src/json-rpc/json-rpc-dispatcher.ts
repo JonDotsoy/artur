@@ -401,15 +401,9 @@ export class JsonRpcDispatcher {
       .catch((error): JsonRpcErrorResponse => {
         return JsonRpcError.isJsonRpcError(error)
           ? error.toJsonRpcResponse(request.id)
-          : {
-              id: request.id,
-              jsonrpc: "2.0",
-              error: {
-                code: -32603,
-                message: "Internal error",
-                data: error,
-              },
-            };
+          : new JsonRpcError(-32603, "Internal error", error).toJsonRpcResponse(
+              request.id,
+            );
       })
       .then((response) => {
         process.resolve(response);
