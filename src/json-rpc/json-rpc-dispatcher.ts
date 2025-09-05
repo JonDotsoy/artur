@@ -5,9 +5,11 @@ import type {
   JsonRpcErrorResponse,
   JsonRpcHandler,
   JsonRpcEvent,
+  Validation,
+  ExtractValidationType,
 } from "./types.js";
 import { JsonRpcError } from "./types.js";
-import { z } from "zod";
+import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
 import { type RouterOptionsDef } from "../http/types/router-options-def.js";
 import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.js";
@@ -249,6 +251,11 @@ export class JsonRpcDispatcher {
   private handlers = new Map<string, JsonRpcHandler>();
   /** Set of active request promises for cleanup tracking */
   private requests = new Set<Promise<JsonRpcResponse>>();
+  /** Map of method names to their parameter validation schemas */
+  private paramsValidations = new Map<
+    string,
+    { input?: Validation<any>; output?: Validation<any> }
+  >();
 
   /** Configuration options for the dispatcher */
   private options: Options;
@@ -284,11 +291,27 @@ export class JsonRpcDispatcher {
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
-  registerMethod<P = any, R = any>(
+  registerMethod<
+    InputValidation extends Validation<any> = any,
+    OutputValidation extends Validation<any> = any,
+  >(
     method: string,
-    handler: JsonRpcHandler<P, R>,
+    handler: JsonRpcHandler<
+      ExtractValidationType<InputValidation>,
+      ExtractValidationType<OutputValidation>
+    >,
+    options?: {
+      inputValidation?: InputValidation;
+      outputValidation?: OutputValidation;
+    },
   ): void {
     this.handlers.set(method, handler);
+    if (options?.inputValidation || options?.outputValidation) {
+      this.paramsValidations.set(method, {
+        input: options.inputValidation,
+        output: options.outputValidation,
+      });
+    }
   }
 
   /**
@@ -296,7 +319,7 @@ export class JsonRpcDispatcher {
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
-  use<P = any, R = any>(method: string, handler: JsonRpcHandler<P, R>): void {
+  use(method: string, handler: JsonRpcHandler<any, any>): void {
     this.registerMethod(method, handler);
   }
 
@@ -315,6 +338,34 @@ export class JsonRpcDispatcher {
     return session;
   }
 
+  registerListMethods(
+    methodNames: string,
+    hiddenMethods: string[] = [methodNames],
+  ) {
+    this.registerMethod(methodNames, async () => {
+      const methods: { name: string; params: any; result: any }[] = [];
+      for (const name of this.handlers.keys()) {
+        if (hiddenMethods.includes(name)) continue;
+        const validations = this.paramsValidations.get(name);
+        const method = {
+          name,
+          params:
+            validations?.input && validations?.input instanceof z.ZodType
+              ? toJSONSchema(validations.input)
+              : {},
+          result:
+            validations?.output && validations?.output instanceof z.ZodType
+              ? toJSONSchema(validations.output)
+              : {},
+        };
+        methods.push(method);
+      }
+      return {
+        methods,
+      };
+    });
+  }
+
   /**
    * Processes a JSON-RPC request and returns the response.
    * Handles method resolution, parameter validation, and error handling.
@@ -322,10 +373,29 @@ export class JsonRpcDispatcher {
    * @param event - Optional event context for the request
    * @returns Object containing the response promise
    */
-  request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
+  request<P = any>(
+    request: JsonRpcRequest<P>,
+    event?: JsonRpcEvent,
+  ): { response: Promise<JsonRpcResponse> } {
     const handler = this.handlers.get(request.method);
+    const validation = this.paramsValidations.get(request.method) ?? null;
 
     const process = Promise.withResolvers<JsonRpcResponse>();
+
+    if (validation?.input) {
+      const parsed = validation.input.safeParse(request.params);
+      if (!parsed.success) {
+        const error = parsed.error;
+
+        const jsonRpcError = new JsonRpcError(-32602, "Invalid params", error);
+
+        process.resolve(jsonRpcError.toJsonRpcResponse(request.id));
+
+        return {
+          response: process.promise,
+        };
+      }
+    }
 
     this.requests.add(process.promise);
 
@@ -334,28 +404,34 @@ export class JsonRpcDispatcher {
       .then(async (handler): Promise<JsonRpcResultResponse> => {
         if (!handler)
           throw new JsonRpcError(-32601, `Method not found: ${request.method}`);
+
+        const result = await handler(params, request, event ?? {});
+
+        if (validation?.output) {
+          const parsed = validation.output.safeParse(result);
+          if (!parsed.success) {
+            const error = parsed.error;
+
+            console.error(
+              `Output validation failed for method ${request.method}:`,
+              error,
+            );
+            throw new JsonRpcError(-32603, "Internal error");
+          }
+        }
+
         return {
           id: request.id,
           jsonrpc: "2.0",
-          result: await handler(params, request, event ?? {}),
+          result: result,
         };
       })
       .catch((error): JsonRpcErrorResponse => {
-        return {
-          id: request.id,
-          jsonrpc: "2.0",
-          error: JsonRpcError.isJsonRpcError(error)
-            ? {
-                code: error.code,
-                message: error.message,
-                data: error.data,
-              }
-            : {
-                code: -32603,
-                message: "Internal error",
-                data: error,
-              },
-        };
+        return JsonRpcError.isJsonRpcError(error)
+          ? error.toJsonRpcResponse(request.id)
+          : new JsonRpcError(-32603, "Internal error", error).toJsonRpcResponse(
+              request.id,
+            );
       })
       .then((response) => {
         process.resolve(response);

@@ -36,6 +36,18 @@ export class JsonRpcError<T = any> extends Error {
     this.data = data;
   }
 
+  toJsonRpcResponse(id: string | number): JsonRpcErrorResponse<T> {
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: this.code,
+        message: this.message,
+        data: this.data,
+      },
+    };
+  }
+
   static isJsonRpcError(error: any): error is JsonRpcError {
     return error instanceof JsonRpcError;
   }
@@ -50,3 +62,12 @@ export type JsonRpcHandler<P = any, R = any> = (
   request: JsonRpcRequest,
   event: JsonRpcEvent,
 ) => Promise<R> | R;
+
+export type ZodValidation<T> = {
+  safeParse: (data: any) => { success: boolean; data?: T; error?: any };
+};
+
+export type Validation<T> = ZodValidation<T>;
+
+export type ExtractValidationType<A> =
+  A extends Validation<infer U> ? U : unknown;
