@@ -36,6 +36,18 @@ export class JsonRpcError<T = any> extends Error {
     this.data = data;
   }
 
+  toJsonRpcResponse(id: string | number): JsonRpcErrorResponse<T> {
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: this.code,
+        message: this.message,
+        data: this.data,
+      },
+    };
+  }
+
   static isJsonRpcError(error: any): error is JsonRpcError {
     return error instanceof JsonRpcError;
   }
