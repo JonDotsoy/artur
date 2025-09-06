@@ -32,8 +32,7 @@ export class Session {
    * @param event - Optional event context for the request
    */
   async request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
-    const response = await this.#jsonRpcRouter.request(request, event)
-      .response;
+    const response = await this.#jsonRpcRouter.request(request, event).response;
     await this.#queue.add(response);
   }
 
