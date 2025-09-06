@@ -81,10 +81,10 @@ server.listen(3000, "127.0.0.1", () => {
 
 ## Router API
 
-Register a new route using `router.use(method, path, options)`.
+Register a new route using `router.route(method, path, options)`.
 
 ```ts
-router.use("GET", "/hello", {
+router.route("GET", "/hello", {
   fetch: () => new Response("ok"),
 });
 ```
@@ -96,8 +96,8 @@ The path accepts a string or a `URLPattern` instance and an optional `test` func
 Middleware wraps a fetch handler so you can modify the request or response.
 
 ```ts
-router.use("GET", "/hello", {
-  middleware: [
+router.route("GET", "/hello", {
+  middlewares: [
     (fetch) => async (request) => {
       const response = await fetch(request);
       return response;
@@ -131,7 +131,7 @@ import { cors, Router } from "artur";
 
 const router = new Router({ middlewares: [cors()] });
 
-router.use("OPTIONS", "/hello", {
+router.route("OPTIONS", "/hello", {
   fetch: () => new Response(null, { status: 204 }),
 });
 ```
@@ -143,7 +143,7 @@ const router = new Router({
   middlewares: [cors({ origin: "https://example.com" })],
 });
 
-router.use("OPTIONS", "/hello", {
+router.route("OPTIONS", "/hello", {
   fetch: () => new Response(null, { status: 204 }),
 });
 ```
@@ -170,36 +170,8 @@ rpc.method("greet", (params: { name: string }) => {
 
 // Integrate with Router
 const router = new Router();
-router.use("POST", "/api/rpc", rpc);
+router.route("POST", "/api/rpc", rpc);
 ```
-
-#### Legacy API Support
-
-The previous `use` method is still supported for backward compatibility but is deprecated:
-
-```ts
-// ⚠️ Deprecated: Use method() instead
-rpc.use("methodName", handler);
-
-// ✅ Recommended: New method() API
-rpc.method("methodName", handler);
-```
-
-Additionally, these method aliases are available for backward compatibility:
-
-```ts
-// ⚠️ Deprecated: Use method() instead
-rpc.registerMethod("methodName", handler);
-
-// ⚠️ Deprecated: Use enableMethodListing() instead
-rpc.registerListMethods("system.listMethods");
-
-// ✅ Recommended: Current API
-rpc.method("methodName", handler);
-rpc.enableMethodListing("system.listMethods");
-```
-
-The `method` API provides better TypeScript support, validation capabilities, and clearer intent for method registration.
 
 ### Input and Output Validation
 
@@ -745,7 +717,7 @@ rpc.enableMethodListing("system.listMethods");
 
 // Set up the router
 const router = new Router();
-router.use("*", "/api/chat", rpc);
+router.route("*", "/api/chat", rpc);
 
 // Client usage:
 // 1. Connect: GET /api/chat?json_rpc_token=user123
