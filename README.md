@@ -43,12 +43,13 @@ npm install artur
 ### Using Bun
 
 ```ts
-import { Router, serve } from "artur";
+import { Router } from "artur";
+import { serve } from "bun";
 
 const router = new Router();
 
-router.use("GET", "/hello", {
-  fetch: () => new Response("Hello world"),
+router.route("GET", "/hello", {
+  fetch: async () => new Response("Hello world"),
 });
 
 serve({
