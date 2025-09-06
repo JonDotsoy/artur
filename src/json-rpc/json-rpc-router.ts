@@ -14,7 +14,7 @@ import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.j
 import { Queue } from "@jondotsoy/utils-js/queue";
 import { bodyRequest } from "./schemas/body-request.js";
 import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-options.js";
-import { sessionIdFactory } from "./session-id-factory.js";
+import { defaultExtractSessionId } from "./default-extract-session-id.js";
 import { sessionMemoryStore } from "./create-session-memory-store.1.js";
 import { Session } from "./session.js";
 
@@ -23,7 +23,7 @@ import { Session } from "./session.js";
  * Handles JSON-RPC 2.0 requests, method registration, session management,
  * and optional Server-Sent Events (SSE) support for real-time communication.
  */
-export class JsonRpcDispatcher {
+export class JsonRpcRouter {
   /** Static flag to track if SSE warning has been displayed */
   private static sseWarningDisplayed = true;
   /** Map of registered method names to their handlers */
@@ -44,17 +44,22 @@ export class JsonRpcDispatcher {
    * @param options - Optional configuration options
    */
   constructor(options?: Partial<JsonRpcDispatcherOptions>) {
+    const extractSessionId =
+      options?.extractSessionId ??
+      options?.sessionIdFactory ??
+      defaultExtractSessionId;
     this.options = {
       sseEnabled: false,
-      sessionIdFactory: sessionIdFactory,
+      extractSessionId,
       ...options,
+      sessionIdFactory: undefined, // Remove deprecated option
     };
 
-    if (this.options.sseEnabled && JsonRpcDispatcher.sseWarningDisplayed) {
+    if (this.options.sseEnabled && JsonRpcRouter.sseWarningDisplayed) {
       console.warn(
         "Warning: SSE support is experimental and should be used with caution.",
       );
-      JsonRpcDispatcher.sseWarningDisplayed = false;
+      JsonRpcRouter.sseWarningDisplayed = false;
     }
   }
 
@@ -63,6 +68,11 @@ export class JsonRpcDispatcher {
    */
   async stop() {
     await Promise.allSettled(this.requests);
+  }
+
+  /** @deprecated Use {@link method}() instead. */
+  get registerMethod() {
+    return this.method;
   }
 
   /**
@@ -121,9 +131,9 @@ export class JsonRpcDispatcher {
    * @throws Will not throw directly, but validation errors are returned as JSON-RPC error responses
    *
    * @see {@link use} - Deprecated alias for this method
-   * @see {@link registerListMethods} - For registering introspection methods
+   * @see {@link enableMethodListing} - For registering introspection methods
    */
-  registerMethod<
+  method<
     InputValidation extends Validation<any> = any,
     OutputValidation extends Validation<any> = any,
   >(
@@ -147,12 +157,12 @@ export class JsonRpcDispatcher {
   }
 
   /**
-   * @deprecated Use {@link registerMethod}() instead. This method is kept for backward compatibility.
+   * @deprecated Use {@link method}() instead. This method is kept for backward compatibility.
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
   use(method: string, handler: JsonRpcHandler<any, any>): void {
-    this.registerMethod(method, handler);
+    this.method(method, handler);
   }
 
   /**
@@ -197,11 +207,11 @@ export class JsonRpcDispatcher {
    *
    * Methods without validation will have empty objects for params and result schemas.
    */
-  registerListMethods(
+  enableMethodListing(
     methodNames: string,
     hiddenMethods: string[] = [methodNames],
   ) {
-    this.registerMethod(methodNames, async () => {
+    this.method(methodNames, async () => {
       const methods: { name: string; params: any; result: any }[] = [];
       for (const name of this.handlers.keys()) {
         if (hiddenMethods.includes(name)) continue;
@@ -351,7 +361,7 @@ export class JsonRpcDispatcher {
       }
 
       if (this.options.sseEnabled && method === "PUT") {
-        const sessionId = await this.options.sessionIdFactory(event);
+        const sessionId = await this.options.extractSessionId(event);
 
         if (!sessionId) {
           return new Response("Bad Request", { status: 400 });
@@ -382,7 +392,7 @@ export class JsonRpcDispatcher {
       }
 
       if (this.options.sseEnabled && method === "GET") {
-        const sessionId = await this.options.sessionIdFactory(event);
+        const sessionId = await this.options.extractSessionId(event);
 
         if (!sessionId) {
           return new Response("Bad Request", { status: 400 });

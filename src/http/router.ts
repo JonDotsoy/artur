@@ -89,7 +89,12 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     };
   }
 
-  use<T>(...args: UseArguments) {
+  /** @deprecated Use {@link route}() instead. */
+  get use() {
+    return this.route;
+  }
+
+  route<T>(...args: UseArguments) {
     const route = useArgumentParser(...args);
 
     if (route) {

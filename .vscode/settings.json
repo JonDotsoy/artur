@@ -1,5 +1,6 @@
 {
   "chat.tools.terminal.autoApprove": {
+    "git --no-pager diff": true,
     "bun fmt": true,
     "bun test": true,
     "rm": false,

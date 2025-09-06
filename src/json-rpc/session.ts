@@ -1,5 +1,5 @@
 import type { Queue } from "@jondotsoy/utils-js/queue";
-import type { JsonRpcDispatcher } from "./json-rpc-dispatcher.js";
+import type { JsonRpcRouter } from "./json-rpc-router.js";
 import type { JsonRpcEvent } from "./types/json-rpc-event.js";
 import type { JsonRpcRequest } from "./types/json-rpc-request.js";
 
@@ -10,18 +10,18 @@ import type { JsonRpcRequest } from "./types/json-rpc-request.js";
 
 export class Session {
   #id: string;
-  #jsonRpcDispatcher: JsonRpcDispatcher;
+  #jsonRpcRouter: JsonRpcRouter;
   #queue: Queue;
 
   /**
    * Creates a new JSON-RPC session.
    * @param id - Unique session identifier
-   * @param jsonRpcDispatcher - The dispatcher instance to handle requests
+   * @param jsonRpcRouter - The dispatcher instance to handle requests
    * @param queue - Message queue for handling responses
    */
-  constructor(id: string, jsonRpcDispatcher: JsonRpcDispatcher, queue: Queue) {
+  constructor(id: string, jsonRpcRouter: JsonRpcRouter, queue: Queue) {
     this.#id = id;
-    this.#jsonRpcDispatcher = jsonRpcDispatcher;
+    this.#jsonRpcRouter = jsonRpcRouter;
     this.#queue = queue;
   }
 
@@ -32,8 +32,7 @@ export class Session {
    * @param event - Optional event context for the request
    */
   async request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
-    const response = await this.#jsonRpcDispatcher.request(request, event)
-      .response;
+    const response = await this.#jsonRpcRouter.request(request, event).response;
     await this.#queue.add(response);
   }
 
