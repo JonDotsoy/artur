@@ -434,7 +434,7 @@ describe("JsonRpcRouter", () => {
       inputValidation: z.object({ name: z.string() }),
     });
 
-    dispatcher.registerListMethods("rpc.discover");
+    dispatcher.enableMethodListing("rpc.discover");
   });
 
   test("test2", async () => {
@@ -444,7 +444,7 @@ describe("JsonRpcRouter", () => {
       inputValidation: z.object({ name: z.string() }),
     });
 
-    dispatcher.registerListMethods("rpc.discover");
+    dispatcher.enableMethodListing("rpc.discover");
 
     const response = await dispatcher.request({
       id: 1,
@@ -482,7 +482,7 @@ describe("JsonRpcRouter", () => {
       outputValidation: z.object({ ok: z.boolean() }),
     });
 
-    dispatcher.registerListMethods("rpc.discover");
+    dispatcher.enableMethodListing("rpc.discover");
 
     const response = await dispatcher.request({
       id: 1,

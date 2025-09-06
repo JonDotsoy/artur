@@ -131,7 +131,7 @@ export class JsonRpcRouter {
    * @throws Will not throw directly, but validation errors are returned as JSON-RPC error responses
    *
    * @see {@link use} - Deprecated alias for this method
-   * @see {@link registerListMethods} - For registering introspection methods
+   * @see {@link enableMethodListing} - For registering introspection methods
    */
   method<
     InputValidation extends Validation<any> = any,
@@ -207,7 +207,7 @@ export class JsonRpcRouter {
    *
    * Methods without validation will have empty objects for params and result schemas.
    */
-  registerListMethods(
+  enableMethodListing(
     methodNames: string,
     hiddenMethods: string[] = [methodNames],
   ) {
