@@ -23,12 +23,26 @@ test("should make a router", async () => {
   new Router();
 });
 
-test("should map a route and execute their fetch function", async () => {
+test("should route using 'use' method and execute fetch function", async () => {
   const router = new Router();
 
   const fetch = mock(async () => new Response("ok"));
 
   router.use("GET", `/a`, { fetch: fetch });
+
+  const res = await router.fetch(new Request("http://localhost/a"));
+
+  expect(res).toBeInstanceOf(Response);
+  expect(res).toMatchObject({ status: 200 });
+  expect(fetch).toBeCalled();
+});
+
+test("should map a route and execute their fetch function", async () => {
+  const router = new Router();
+
+  const fetch = mock(async () => new Response("ok"));
+
+  router.route("GET", `/a`, { fetch: fetch });
 
   const res = await router.fetch(new Request("http://localhost/a"));
 
@@ -53,7 +67,7 @@ test("should request a bad request and expect a 500 response", async () => {
     throw new Error("bad fetch");
   });
 
-  router.use("GET", `/hello`, { fetch });
+  router.route("GET", `/hello`, { fetch });
 
   const response = await router.fetch(new Request("http://localhost/hello"));
 
@@ -68,7 +82,7 @@ test("should request a bad request and pass the error", async () => {
     throw new Error("bad fetch");
   });
 
-  router.use("GET", `/hello`, { fetch });
+  router.route("GET", `/hello`, { fetch });
 
   const response = router.fetch(new Request("http://localhost/hello"));
 
@@ -84,7 +98,7 @@ test("should make a router with a url-path string", async () => {
     return new Response();
   });
 
-  router.use("GET", `/hello/:name`, { fetch });
+  router.route("GET", `/hello/:name`, { fetch });
 
   await router.fetch(new Request("http://localhost/hello/mark"));
 
@@ -94,7 +108,7 @@ test("should make a router with a url-path string", async () => {
 test("should validate case on REAMDE file", async () => {
   const router = new Router();
 
-  router.use<"name">("GET", "/users/:name", {
+  router.route<"name">("GET", "/users/:name", {
     fetch: async (request) => {
       const { name } = params(request);
       return new Response(`hello ${name}`);
@@ -111,7 +125,7 @@ test("should validate case on REAMDE file", async () => {
 test("should match the request with any method", async () => {
   const router = new Router();
 
-  router.use("ALL", "/hello", {
+  router.route("ALL", "/hello", {
     fetch: async () => new Response("ok"),
   });
 
@@ -132,7 +146,7 @@ test("should match the request with any method", async () => {
 test("should call the router with middleware", async () => {
   const router = new Router();
 
-  router.use("GET", "/hello", {
+  router.route("GET", "/hello", {
     middlewares: [
       (fetch) => async (request) => {
         const res = await fetch(request);
@@ -156,7 +170,7 @@ test("should call the router with middleware", async () => {
 test.skip("should transfer middleware when its match", async () => {
   const router = new Router();
 
-  router.use("ALL", "/hello", {
+  router.route("ALL", "/hello", {
     // @ts-ignore
     middlewares: [
       (fetch) => async (request) => {
@@ -167,7 +181,7 @@ test.skip("should transfer middleware when its match", async () => {
     ],
   });
 
-  router.use("GET", "/hello", {
+  router.route("GET", "/hello", {
     fetch: async () => new Response("ok"),
   });
 
@@ -184,7 +198,7 @@ test.skip("should transfer middleware when its match", async () => {
 test.skip("should use a route with extra test evaluation", async () => {
   const router = new Router();
 
-  router.use("ALL", "/hello", {
+  router.route("ALL", "/hello", {
     // @ts-ignore
     test: (request) => request.headers.get("x-able") === "True",
     middlewares: [
@@ -223,7 +237,7 @@ test("should declare global middleware", async () => {
     ],
   });
 
-  router.use("ALL", "/hello", {
+  router.route("ALL", "/hello", {
     fetch: async () => new Response("ok"),
   });
 
@@ -247,7 +261,7 @@ test("should customize the error", async () => {
 
   const router = new Router();
 
-  router.use("ALL", "/hello", {
+  router.route("ALL", "/hello", {
     fetch: async (request) => {
       guardCanAccess(request);
       return new Response("ok");
@@ -288,7 +302,7 @@ test("should attach a http server to Node", async () => {
 
   const router = new Router();
 
-  router.use("POST", "/", {
+  router.route("POST", "/", {
     fetch: async () => new Response("ok", { headers: { a: "b" } }),
   });
 
@@ -341,7 +355,7 @@ test("should attach a http server to Node pass direct request listener", async (
 
   const router = new Router();
 
-  router.use("POST", "/", {
+  router.route("POST", "/", {
     fetch: async () => new Response("ok", { headers: { a: "b" } }),
   });
 
@@ -365,7 +379,7 @@ test("should attach a http server to Node and get the response", async () => {
   const { createServer } = await import("node:http");
 
   const router = new Router();
-  router.use("GET", "/hi", {
+  router.route("GET", "/hi", {
     fetch: async () => Response.json({ ok: true }),
   });
 
@@ -398,7 +412,7 @@ test("should attach a http server to Node and get the response with POST method"
   const { createServer } = await import("node:http");
 
   const router = new Router();
-  router.use("POST", "/hi", {
+  router.route("POST", "/hi", {
     fetch: async (req) => Response.json({ data: await req.text() }),
   });
 
@@ -433,7 +447,7 @@ test("Streaming POST request body handling", async () => {
 
   const router = new Router();
 
-  router.use("POST", "/", {
+  router.route("POST", "/", {
     fetch: async (req) => Response.json({ body: await req.text() }),
   });
 
@@ -472,7 +486,7 @@ test("Partial streaming POST request body handling with cancellation", async () 
 
   const router = new Router();
 
-  router.use("POST", "/", {
+  router.route("POST", "/", {
     fetch: async (req) => {
       const bodyReadable = req.body!.getReader();
       const e = await bodyReadable.read();

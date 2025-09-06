@@ -540,7 +540,7 @@ describe("Router integration", () => {
   test("should integrate with Router to handle JSON-RPC requests via HTTP endpoint", async () => {
     const router = new Router();
 
-    router.use("POST", "/json-rpc", dispatcher);
+    router.route("POST", "/json-rpc", dispatcher);
 
     const response = await router.fetch(
       new Request("http://localhost/json-rpc", {

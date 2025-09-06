@@ -45,8 +45,8 @@ test("should fill a response object to a GET request", () => {
 test("should calling to cors middleware", async () => {
   const router = new Router({ middlewares: [cors()] });
 
-  router.use("OPTIONS", "*", {
-    fetch: () => new Response(null, { status: 204 }),
+  router.route("OPTIONS", "*", {
+    fetch: async () => new Response(null, { status: 204 }),
   });
 
   const response = await router.fetch(
