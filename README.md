@@ -66,8 +66,8 @@ import { Router } from "artur";
 
 const router = new Router();
 
-router.use("GET", "/hello", {
-  fetch: () => new Response("Hello world"),
+router.route("GET", "/hello", {
+  fetch: async () => new Response("Hello world"),
 });
 
 const server = createServer((req, res) => {
