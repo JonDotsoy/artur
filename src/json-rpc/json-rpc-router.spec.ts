@@ -55,7 +55,7 @@ describe("JsonRpcRouter", () => {
 
   test("should register method handler using registerMethod API", async () => {
     const p = Promise.withResolvers<JsonRpcRequest>();
-    await router.registerMethod("testMethod", (params, request) => {
+    await router.method("testMethod", (params, request) => {
       p.resolve(request);
     });
     router.request({
@@ -235,7 +235,7 @@ describe("JsonRpcRouter", () => {
       name: z.string(),
     });
 
-    dispatcher.registerMethod(
+    dispatcher.method(
       "testMethod",
       (params) => {
         expectTypeOf(params).toEqualTypeOf<{ name: string }>();
@@ -258,7 +258,7 @@ describe("JsonRpcRouter", () => {
       message: z.string(),
     });
 
-    dispatcher.registerMethod(
+    dispatcher.method(
       "testMethod",
       (params) => {
         expectTypeOf(params).toEqualTypeOf<{ name: string }>();
@@ -283,7 +283,7 @@ describe("JsonRpcRouter", () => {
       message: z.string(),
     });
 
-    dispatcher.registerMethod(
+    dispatcher.method(
       "testMethod",
       (params) => {
         expectTypeOf(params).toEqualTypeOf<unknown>();
@@ -302,7 +302,7 @@ describe("JsonRpcRouter", () => {
   test("should type-check parameters as unknown when no validation schemas are provided", () => {
     const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
-    dispatcher.registerMethod("testMethod", (params) => {
+    dispatcher.method("testMethod", (params) => {
       expectTypeOf(params).toEqualTypeOf<unknown>();
     });
   });
@@ -315,7 +315,7 @@ describe("JsonRpcRouter", () => {
       name: z.string(),
     });
 
-    dispatcher.registerMethod("testMethod", handler, {
+    dispatcher.method("testMethod", handler, {
       inputValidation: input,
     });
 
@@ -341,7 +341,7 @@ describe("JsonRpcRouter", () => {
       name: z.string(),
     });
 
-    dispatcher.registerMethod("testMethod", handler, {
+    dispatcher.method("testMethod", handler, {
       inputValidation: input,
     });
 
@@ -371,7 +371,7 @@ describe("JsonRpcRouter", () => {
       name: z.string(),
     });
 
-    dispatcher.registerMethod("testMethod", handler, {
+    dispatcher.method("testMethod", handler, {
       inputValidation: input,
     });
 
@@ -400,7 +400,7 @@ describe("JsonRpcRouter", () => {
     });
 
     // Handler returns invalid output (missing message property)
-    dispatcher.registerMethod(
+    dispatcher.method(
       "testMethod",
       () => {
         return { invalidProperty: "value" } as any; // This will fail validation at runtime
@@ -430,7 +430,7 @@ describe("JsonRpcRouter", () => {
   test("test1", async () => {
     const dispatcher = new JsonRpcRouter();
 
-    dispatcher.registerMethod("testMethod", mock(), {
+    dispatcher.method("testMethod", mock(), {
       inputValidation: z.object({ name: z.string() }),
     });
 
@@ -440,7 +440,7 @@ describe("JsonRpcRouter", () => {
   test("test2", async () => {
     const dispatcher = new JsonRpcRouter();
 
-    dispatcher.registerMethod("testMethod", mock(), {
+    dispatcher.method("testMethod", mock(), {
       inputValidation: z.object({ name: z.string() }),
     });
 
@@ -477,7 +477,7 @@ describe("JsonRpcRouter", () => {
   test("test3", async () => {
     const dispatcher = new JsonRpcRouter();
 
-    dispatcher.registerMethod("testMethod", mock(), {
+    dispatcher.method("testMethod", mock(), {
       inputValidation: z.object({ name: z.string() }),
       outputValidation: z.object({ ok: z.boolean() }),
     });
@@ -586,7 +586,7 @@ describe("Session management", () => {
   test("should execute method and return response via session consume", async () => {
     const dispatcher = new JsonRpcRouter();
 
-    dispatcher.registerMethod("testMethod", (params, request) => {
+    dispatcher.method("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -620,7 +620,7 @@ describe("Session management", () => {
     const push = mock();
     const dispatcher = new JsonRpcRouter();
 
-    dispatcher.registerMethod("testMethod", (params, request) => {
+    dispatcher.method("testMethod", (params, request) => {
       return {
         ok: true,
       };
@@ -661,7 +661,7 @@ describe("Session management", () => {
     const push = mock();
     const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
-    dispatcher.registerMethod("testMethod", (params, request) => {
+    dispatcher.method("testMethod", (params, request) => {
       return {
         ok: true,
       };

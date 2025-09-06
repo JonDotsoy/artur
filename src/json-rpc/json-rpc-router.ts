@@ -65,6 +65,11 @@ export class JsonRpcRouter {
     await Promise.allSettled(this.requests);
   }
 
+  /** @deprecated Use {@link method}() instead. */
+  get registerMethod() {
+    return this.method;
+  }
+
   /**
    * Registers a method handler for JSON-RPC requests with optional input/output validation.
    *
@@ -123,7 +128,7 @@ export class JsonRpcRouter {
    * @see {@link use} - Deprecated alias for this method
    * @see {@link registerListMethods} - For registering introspection methods
    */
-  registerMethod<
+  method<
     InputValidation extends Validation<any> = any,
     OutputValidation extends Validation<any> = any,
   >(
@@ -147,12 +152,12 @@ export class JsonRpcRouter {
   }
 
   /**
-   * @deprecated Use {@link registerMethod}() instead. This method is kept for backward compatibility.
+   * @deprecated Use {@link method}() instead. This method is kept for backward compatibility.
    * @param method - The method name to register
    * @param handler - The handler function for the method
    */
   use(method: string, handler: JsonRpcHandler<any, any>): void {
-    this.registerMethod(method, handler);
+    this.method(method, handler);
   }
 
   /**
@@ -201,7 +206,7 @@ export class JsonRpcRouter {
     methodNames: string,
     hiddenMethods: string[] = [methodNames],
   ) {
-    this.registerMethod(methodNames, async () => {
+    this.method(methodNames, async () => {
       const methods: { name: string; params: any; result: any }[] = [];
       for (const name of this.handlers.keys()) {
         if (hiddenMethods.includes(name)) continue;
