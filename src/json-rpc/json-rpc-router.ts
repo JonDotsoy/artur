@@ -14,7 +14,7 @@ import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.j
 import { Queue } from "@jondotsoy/utils-js/queue";
 import { bodyRequest } from "./schemas/body-request.js";
 import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-options.js";
-import { sessionIdFactory } from "./session-id-factory.js";
+import { defaultExtractSessionId } from "./default-extract-session-id.js";
 import { sessionMemoryStore } from "./create-session-memory-store.1.js";
 import { Session } from "./session.js";
 
@@ -46,7 +46,7 @@ export class JsonRpcRouter {
   constructor(options?: Partial<JsonRpcDispatcherOptions>) {
     this.options = {
       sseEnabled: false,
-      sessionIdFactory: sessionIdFactory,
+      extractSessionId: defaultExtractSessionId,
       ...options,
     };
 
@@ -356,7 +356,7 @@ export class JsonRpcRouter {
       }
 
       if (this.options.sseEnabled && method === "PUT") {
-        const sessionId = await this.options.sessionIdFactory(event);
+        const sessionId = await this.options.extractSessionId(event);
 
         if (!sessionId) {
           return new Response("Bad Request", { status: 400 });
@@ -387,7 +387,7 @@ export class JsonRpcRouter {
       }
 
       if (this.options.sseEnabled && method === "GET") {
-        const sessionId = await this.options.sessionIdFactory(event);
+        const sessionId = await this.options.extractSessionId(event);
 
         if (!sessionId) {
           return new Response("Bad Request", { status: 400 });

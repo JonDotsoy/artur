@@ -10,7 +10,7 @@ import type { JsonRpcEvent } from "./types/json-rpc-event.js";
  * @param event - The JSON-RPC event containing HTTP request information
  * @returns Session ID string if found, null otherwise
  */
-export const sessionIdFactory = (event: JsonRpcEvent) => {
+export const defaultExtractSessionId = (event: JsonRpcEvent) => {
   if (event.httpRequest) {
     const request = event.httpRequest;
     const url = new URL(request.url);
