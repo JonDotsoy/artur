@@ -1,243 +1,22 @@
-import type {
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcResultResponse,
-  JsonRpcErrorResponse,
-  JsonRpcHandler,
-  JsonRpcEvent,
-  Validation,
-  ExtractValidationType,
-} from "./types.js";
-import { JsonRpcError } from "./types.js";
+import type { ExtractValidationType } from "./types/extract-validation-type.js";
+import type { Validation } from "./types/validation.js";
+import type { JsonRpcHandler } from "./types/json-rpc-handler.js";
+import type { JsonRpcEvent } from "./types/json-rpc-event.js";
+import type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
+import type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
+import type { JsonRpcResponse } from "./types/json-rpc-response.js";
+import type { JsonRpcRequest } from "./types/json-rpc-request.js";
+import { JsonRpcError } from "./json-rpc-error.js";
 import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
 import { type RouterOptionsDef } from "../http/types/router-options-def.js";
 import { DataEventSourceEncoder } from "./utils/event-source/data-event-source.js";
-import { Queue, MemoryStore, Store, Message } from "@jondotsoy/utils-js/queue";
-
-/**
- * Zod schema for validating JSON-RPC request structure.
- * Ensures the request conforms to JSON-RPC 2.0 specification.
- */
-const jsonRpcRequestSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  jsonrpc: z.literal("2.0"),
-  method: z.string(),
-  params: z.any(),
-});
-
-/**
- * Zod schema for validating request body.
- * Accepts either a single JSON-RPC request or an array of requests for batch processing.
- */
-const bodyRequest = z.union([
-  jsonRpcRequestSchema,
-  z.array(jsonRpcRequestSchema),
-]);
-
-/**
- * Configuration options for JsonRpcDispatcher.
- */
-type Options = {
-  /** Whether Server-Sent Events (SSE) support is enabled for real-time communication */
-  sseEnabled: boolean;
-  /** Factory function to extract session ID from JSON-RPC events */
-  sessionIdFactory: (
-    event: JsonRpcEvent,
-  ) => string | null | Promise<string | null>;
-};
-
-/**
- * Default session ID factory function.
- * Extracts session identifier from HTTP request using various methods:
- * - URL search parameter 'json_rpc_token'
- * - HTTP header 'x-json-rpc-token'
- * - URL search parameter 'token'
- *
- * @param event - The JSON-RPC event containing HTTP request information
- * @returns Session ID string if found, null otherwise
- */
-const sessionIdFactory = (event: JsonRpcEvent) => {
-  if (event.httpRequest) {
-    const request = event.httpRequest;
-    const url = new URL(request.url);
-    const jsonRpcToken = url.searchParams.get("json_rpc_token");
-    if (jsonRpcToken) {
-      return jsonRpcToken;
-    }
-    const headerJsonRpcToken = request.headers.get("x-json-rpc-token")?.trim();
-    if (headerJsonRpcToken) {
-      return headerJsonRpcToken;
-    }
-    const token = url.searchParams.get("token");
-    if (token) {
-      return token;
-    }
-  }
-  return null;
-};
-
-/**
- * Shared memory store for managing session-based message storage.
- * Maps session IDs to their corresponding memory stores.
- */
-const shareMemory = new Map<string, MemoryStore>();
-
-/**
- * Session-specific memory store implementation.
- * Provides isolated message storage per session using a shared memory backend.
- */
-class SessionMemoryStore extends Store {
-  #sessionId: string;
-
-  /**
-   * Creates a new session memory store.
-   * @param sessionId - Unique identifier for the session
-   */
-  constructor(sessionId: string) {
-    super();
-    this.#sessionId = sessionId;
-  }
-
-  /**
-   * Adds a message to the session's message store.
-   * @param message - The message to add
-   */
-  async addMessage(message: Message): Promise<void> {
-    let messages = shareMemory.get(this.#sessionId);
-    if (!messages) {
-      messages = new MemoryStore();
-      shareMemory.set(this.#sessionId, messages);
-    }
-    messages.addMessage(message);
-  }
-
-  /**
-   * Retrieves a message by its ID from the session store.
-   * @param messageId - The ID of the message to retrieve
-   * @returns The message if found, null otherwise
-   */
-  async getMessage(messageId: string): Promise<Message | null> {
-    return (
-      (await shareMemory.get(this.#sessionId)?.getMessage(messageId)) ?? null
-    );
-  }
-
-  /**
-   * Acknowledges a message as processed.
-   * @param messageId - The ID of the message to acknowledge
-   */
-  async acknowledgeMessage(messageId: string): Promise<void> {
-    await shareMemory.get(this.#sessionId)?.acknowledgeMessage(messageId);
-  }
-
-  /**
-   * Deletes a message from the session store.
-   * Automatically cleans up empty session stores.
-   * @param messageId - The ID of the message to delete
-   */
-  async deleteMessage(messageId: string): Promise<void> {
-    const sessionMemory = shareMemory.get(this.#sessionId);
-    if (sessionMemory) {
-      await sessionMemory.deleteMessage(messageId);
-      if ((await sessionMemory.getSize()) === 0) {
-        await sessionMemory.close();
-        shareMemory.delete(this.#sessionId);
-      }
-    }
-  }
-
-  /**
-   * Claims the next available message for processing.
-   * @param acknowledgeTimeoutMs - Timeout in milliseconds for acknowledgment
-   * @param now - Current timestamp
-   * @param abort - Optional abort signal for cancellation
-   * @returns The claimed message if available, null otherwise
-   */
-  async claimMessage(
-    acknowledgeTimeoutMs: number,
-    now: number,
-    abort?: AbortSignal,
-  ): Promise<Message | null> {
-    return (
-      (await shareMemory
-        .get(this.#sessionId)
-        ?.claimMessage(acknowledgeTimeoutMs, now, abort)) ?? null
-    );
-  }
-
-  /**
-   * Gets the current number of messages in the session store.
-   * @returns The count of messages
-   */
-  async getSize(): Promise<number> {
-    return (await shareMemory.get(this.#sessionId)?.getSize()) ?? 0;
-  }
-
-  /**
-   * Closes the session store and cleans up resources.
-   */
-  async close(): Promise<void> {
-    await shareMemory.get(this.#sessionId)?.close();
-  }
-}
-
-/**
- * Factory function to create a session memory store.
- * @param sessionId - The session ID for the store
- * @returns A new SessionMemoryStore instance
- */
-const sessionMemoryStore = (sessionId: string) =>
-  new SessionMemoryStore(sessionId);
-
-/**
- * Represents a JSON-RPC session for handling requests and responses.
- * Provides methods for making requests and consuming responses in a session context.
- */
-export class Session {
-  #id: string;
-  #jsonRpcDispatcher: JsonRpcDispatcher;
-  #queue: Queue;
-
-  /**
-   * Creates a new JSON-RPC session.
-   * @param id - Unique session identifier
-   * @param jsonRpcDispatcher - The dispatcher instance to handle requests
-   * @param queue - Message queue for handling responses
-   */
-  constructor(id: string, jsonRpcDispatcher: JsonRpcDispatcher, queue: Queue) {
-    this.#id = id;
-    this.#jsonRpcDispatcher = jsonRpcDispatcher;
-    this.#queue = queue;
-  }
-
-  /**
-   * Makes a JSON-RPC request within the session context.
-   * The response is automatically queued for consumption.
-   * @param request - The JSON-RPC request to make
-   * @param event - Optional event context for the request
-   */
-  async request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
-    const response = await this.#jsonRpcDispatcher.request(request, event)
-      .response;
-    await this.#queue.add(response);
-  }
-
-  /**
-   * Consumes messages from the session queue.
-   * Provides an async iterator for processing responses with acknowledgment capability.
-   * @param signal - Optional abort signal for cancellation
-   * @yields Object containing the message and acknowledgment function
-   */
-  async *consume(signal?: AbortSignal) {
-    for await (const message of this.#queue.consume(signal)) {
-      yield {
-        message,
-        ack: () => this.#queue.ack(message.id),
-      };
-    }
-  }
-}
+import { Queue } from "@jondotsoy/utils-js/queue";
+import { bodyRequest } from "./schemas/body-request.js";
+import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-options.js";
+import { sessionIdFactory } from "./session-id-factory.js";
+import { sessionMemoryStore } from "./create-session-memory-store.1.js";
+import { Session } from "./session.js";
 
 /**
  * Main JSON-RPC dispatcher class.
@@ -258,13 +37,13 @@ export class JsonRpcDispatcher {
   >();
 
   /** Configuration options for the dispatcher */
-  private options: Options;
+  private options: JsonRpcDispatcherOptions;
 
   /**
    * Creates a new JSON-RPC dispatcher.
    * @param options - Optional configuration options
    */
-  constructor(options?: Partial<Options>) {
+  constructor(options?: Partial<JsonRpcDispatcherOptions>) {
     this.options = {
       sseEnabled: false,
       sessionIdFactory: sessionIdFactory,

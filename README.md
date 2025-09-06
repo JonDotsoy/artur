@@ -242,34 +242,26 @@ The JSON-RPC dispatcher provides built-in introspection capabilities through the
 import { z } from "zod";
 
 // Register your business methods with validation
-rpc.registerMethod(
-  "user.create",
-  (params) => createUser(params),
-  {
-    inputValidation: z.object({
-      name: z.string(),
-      email: z.string().email(),
-    }),
-    outputValidation: z.object({
-      id: z.string(),
-      name: z.string(),
-      email: z.string(),
-    }),
-  },
-);
+rpc.registerMethod("user.create", (params) => createUser(params), {
+  inputValidation: z.object({
+    name: z.string(),
+    email: z.string().email(),
+  }),
+  outputValidation: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+  }),
+});
 
-rpc.registerMethod(
-  "user.getById",
-  (params) => getUserById(params.id),
-  {
-    inputValidation: z.object({ id: z.string() }),
-    outputValidation: z.object({
-      id: z.string(),
-      name: z.string(),
-      email: z.string(),
-    }),
-  },
-);
+rpc.registerMethod("user.getById", (params) => getUserById(params.id), {
+  inputValidation: z.object({ id: z.string() }),
+  outputValidation: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+  }),
+});
 
 // Register the introspection method
 rpc.registerListMethods("system.listMethods");
@@ -277,7 +269,7 @@ rpc.registerListMethods("system.listMethods");
 // Optional: Hide specific methods from the list
 rpc.registerListMethods("system.listMethods", [
   "system.listMethods", // Hide self-reference
-  "internal.debug",     // Hide internal methods
+  "internal.debug", // Hide internal methods
 ]);
 ```
 
@@ -425,7 +417,7 @@ rpc.registerMethod(
       age: z.number(),
       createdAt: z.date(),
     }),
-  }
+  },
 );
 ```
 
@@ -434,6 +426,7 @@ rpc.registerMethod(
 When registering methods with `registerMethod()`, you can provide these options:
 
 - **`inputValidation`** (optional): Zod schema to validate input parameters
+
   - Automatically validates parameters before calling the handler
   - Returns JSON-RPC error (-32602 Invalid params) if validation fails
   - Provides automatic TypeScript typing for the params argument

@@ -1,10 +1,8 @@
 import { test, expect, mock, beforeEach, afterEach, describe } from "bun:test";
 import { JsonRpcDispatcher } from "./json-rpc-dispatcher.js";
-import {
-  JsonRpcError,
-  type JsonRpcRequest,
-  type JsonRpcResponse,
-} from "./types.js";
+import { JsonRpcError } from "./json-rpc-error.js";
+import { type JsonRpcResponse } from "./types/json-rpc-response.js";
+import { type JsonRpcRequest } from "./types/json-rpc-request.js";
 import { Router } from "../http/router.js";
 import { z } from "zod";
 import { expectTypeOf } from "expect-type";
