@@ -23,7 +23,7 @@ import { Session } from "./session.js";
  * Handles JSON-RPC 2.0 requests, method registration, session management,
  * and optional Server-Sent Events (SSE) support for real-time communication.
  */
-export class JsonRpcDispatcher {
+export class JsonRpcRouter {
   /** Static flag to track if SSE warning has been displayed */
   private static sseWarningDisplayed = true;
   /** Map of registered method names to their handlers */
@@ -50,11 +50,11 @@ export class JsonRpcDispatcher {
       ...options,
     };
 
-    if (this.options.sseEnabled && JsonRpcDispatcher.sseWarningDisplayed) {
+    if (this.options.sseEnabled && JsonRpcRouter.sseWarningDisplayed) {
       console.warn(
         "Warning: SSE support is experimental and should be used with caution.",
       );
-      JsonRpcDispatcher.sseWarningDisplayed = false;
+      JsonRpcRouter.sseWarningDisplayed = false;
     }
   }
 

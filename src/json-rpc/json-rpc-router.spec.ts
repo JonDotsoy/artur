@@ -1,5 +1,5 @@
 import { test, expect, mock, beforeEach, afterEach, describe } from "bun:test";
-import { JsonRpcDispatcher } from "./json-rpc-dispatcher.js";
+import { JsonRpcRouter } from "./json-rpc-router.js";
 import { JsonRpcError } from "./json-rpc-error.js";
 import { type JsonRpcResponse } from "./types/json-rpc-response.js";
 import { type JsonRpcRequest } from "./types/json-rpc-request.js";
@@ -22,23 +22,23 @@ describe("JsonRpcError", () => {
   });
 });
 
-describe("JsonRpcDispatcher", () => {
-  let dispatcher: JsonRpcDispatcher;
+describe("JsonRpcRouter", () => {
+  let router: JsonRpcRouter;
 
   beforeEach(() => {
-    dispatcher = new JsonRpcDispatcher();
+    router = new JsonRpcRouter();
   });
 
   afterEach(async () => {
-    await dispatcher.stop();
+    await router.stop();
   });
 
   test("should register method handler and receive request object when called", async () => {
     const p = Promise.withResolvers<JsonRpcRequest>();
-    await dispatcher.use("testMethod", (params, request) => {
+    await router.use("testMethod", (params, request) => {
       p.resolve(request);
     });
-    dispatcher.request({
+    router.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -55,10 +55,10 @@ describe("JsonRpcDispatcher", () => {
 
   test("should register method handler using registerMethod API", async () => {
     const p = Promise.withResolvers<JsonRpcRequest>();
-    await dispatcher.registerMethod("testMethod", (params, request) => {
+    await router.registerMethod("testMethod", (params, request) => {
       p.resolve(request);
     });
-    dispatcher.request({
+    router.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -73,13 +73,13 @@ describe("JsonRpcDispatcher", () => {
     });
   });
   test("should return response promise directly from request method", async () => {
-    dispatcher.use("testMethod", (params, request) => {
+    router.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await dispatcher.request({
+    const response = await router.request({
       id: 1,
       jsonrpc: "2.0",
       method: "testMethod",
@@ -95,13 +95,13 @@ describe("JsonRpcDispatcher", () => {
     });
   });
   test("should handle single JSON-RPC request via HTTP POST and return JSON response", async () => {
-    dispatcher.use("testMethod", (params, request) => {
+    router.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await dispatcher.fetch(
+    const response = await router.fetch(
       new Request("http://localhost", {
         method: "POST",
         headers: {
@@ -127,13 +127,13 @@ describe("JsonRpcDispatcher", () => {
     });
   });
   test("should handle batch JSON-RPC requests via HTTP POST and return array of responses", async () => {
-    dispatcher.use("testMethod", (params, request) => {
+    router.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await dispatcher.fetch(
+    const response = await router.fetch(
       new Request("http://localhost", {
         method: "POST",
         headers: {
@@ -176,19 +176,19 @@ describe("JsonRpcDispatcher", () => {
     ]);
   });
   test("should stream JSON-RPC responses via Server-Sent Events when using GET and PUT requests", async () => {
-    dispatcher = new JsonRpcDispatcher({
+    router = new JsonRpcRouter({
       sseEnabled: true,
     });
     const pushChunk = mock((chunk: any) => {});
     const pending = Promise.withResolvers<void>();
 
-    dispatcher.use("testMethod", (params, request) => {
+    router.use("testMethod", (params, request) => {
       return {
         ok: true,
       };
     });
 
-    const response = await dispatcher.fetch(
+    const response = await router.fetch(
       new Request("http://localhost?json_rpc_token=test-token", {
         method: "GET",
         headers: {
@@ -206,7 +206,7 @@ describe("JsonRpcDispatcher", () => {
       }),
     );
 
-    await dispatcher.fetch(
+    await router.fetch(
       new Request("http://localhost?json_rpc_token=test-token", {
         method: "PUT",
         headers: {
@@ -229,7 +229,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("should properly type-check method parameters when input validation schema is provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+    const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
     const input = z.object({
       name: z.string(),
@@ -247,7 +247,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("should properly type-check both input and output when validation schemas are provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+    const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
     const input = z.object({
       name: z.string(),
@@ -276,7 +276,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("should type-check parameters as unknown when only output validation is provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+    const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
     const output = z.object({
       ok: z.boolean(),
@@ -300,7 +300,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("should type-check parameters as unknown when no validation schemas are provided", () => {
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+    const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
     dispatcher.registerMethod("testMethod", (params) => {
       expectTypeOf(params).toEqualTypeOf<unknown>();
@@ -309,7 +309,7 @@ describe("JsonRpcDispatcher", () => {
 
   test("should accept valid input parameters when input validation is provided", async () => {
     const handler = mock();
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     const input = z.object({
       name: z.string(),
@@ -335,7 +335,7 @@ describe("JsonRpcDispatcher", () => {
 
   test("should return validation error when input parameters are invalid", async () => {
     const handler = mock();
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     const input = z.object({
       name: z.string(),
@@ -365,7 +365,7 @@ describe("JsonRpcDispatcher", () => {
 
   test("should not invoke handler when input validation fails", async () => {
     const handler = mock();
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     const input = z.object({
       name: z.string(),
@@ -393,7 +393,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("should return internal error when output validation fails", async () => {
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     const output = z.object({
       message: z.string(),
@@ -428,7 +428,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("test1", async () => {
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     dispatcher.registerMethod("testMethod", mock(), {
       inputValidation: z.object({ name: z.string() }),
@@ -438,7 +438,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("test2", async () => {
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     dispatcher.registerMethod("testMethod", mock(), {
       inputValidation: z.object({ name: z.string() }),
@@ -475,7 +475,7 @@ describe("JsonRpcDispatcher", () => {
   });
 
   test("test3", async () => {
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     dispatcher.registerMethod("testMethod", mock(), {
       inputValidation: z.object({ name: z.string() }),
@@ -522,10 +522,10 @@ describe("JsonRpcDispatcher", () => {
 });
 
 describe("Router integration", () => {
-  let dispatcher: JsonRpcDispatcher;
+  let dispatcher: JsonRpcRouter;
 
   beforeEach(() => {
-    dispatcher = new JsonRpcDispatcher();
+    dispatcher = new JsonRpcRouter();
     dispatcher.use("testMethod", (params, request) => {
       return {
         ok: true,
@@ -571,7 +571,7 @@ describe("Router integration", () => {
 
 describe("Session management", () => {
   test("should handle requests when session has no registered methods", async () => {
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     const session = dispatcher.openSession("test-session-1");
 
@@ -584,7 +584,7 @@ describe("Session management", () => {
   });
 
   test("should execute method and return response via session consume", async () => {
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     dispatcher.registerMethod("testMethod", (params, request) => {
       return {
@@ -618,7 +618,7 @@ describe("Session management", () => {
 
   test("should consume session responses with abort controller", async () => {
     const push = mock();
-    const dispatcher = new JsonRpcDispatcher();
+    const dispatcher = new JsonRpcRouter();
 
     dispatcher.registerMethod("testMethod", (params, request) => {
       return {
@@ -659,7 +659,7 @@ describe("Session management", () => {
 
   test("should stream responses via SSE when using session tokens", async () => {
     const push = mock();
-    const dispatcher = new JsonRpcDispatcher({ sseEnabled: true });
+    const dispatcher = new JsonRpcRouter({ sseEnabled: true });
 
     dispatcher.registerMethod("testMethod", (params, request) => {
       return {
