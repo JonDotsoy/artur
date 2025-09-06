@@ -44,10 +44,15 @@ export class JsonRpcRouter {
    * @param options - Optional configuration options
    */
   constructor(options?: Partial<JsonRpcDispatcherOptions>) {
+    const extractSessionId =
+      options?.extractSessionId ??
+      options?.sessionIdFactory ??
+      defaultExtractSessionId;
     this.options = {
       sseEnabled: false,
-      extractSessionId: defaultExtractSessionId,
+      extractSessionId,
       ...options,
+      sessionIdFactory: undefined, // Remove deprecated option
     };
 
     if (this.options.sseEnabled && JsonRpcRouter.sseWarningDisplayed) {
