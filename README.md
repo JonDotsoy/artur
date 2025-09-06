@@ -158,12 +158,12 @@ import { JsonRpcDispatcher, Router } from "artur";
 
 const rpc = new JsonRpcDispatcher();
 
-// Register RPC methods using the registerMethod API
-rpc.registerMethod("add", (params: { a: number; b: number }) => {
+// Register RPC methods using the method API
+rpc.method("add", (params: { a: number; b: number }) => {
   return params.a + params.b;
 });
 
-rpc.registerMethod("greet", (params: { name: string }) => {
+rpc.method("greet", (params: { name: string }) => {
   return `Hello, ${params.name}!`;
 });
 
@@ -177,14 +177,28 @@ router.use("POST", "/api/rpc", rpc);
 The previous `use` method is still supported for backward compatibility but is deprecated:
 
 ```ts
-// ⚠️ Deprecated: Use registerMethod() instead
+// ⚠️ Deprecated: Use method() instead
 rpc.use("methodName", handler);
 
-// ✅ Recommended: New registerMethod() API
-rpc.registerMethod("methodName", handler);
+// ✅ Recommended: New method() API
+rpc.method("methodName", handler);
 ```
 
-The `registerMethod` API provides better TypeScript support, validation capabilities, and clearer intent for method registration.
+Additionally, these method aliases are available for backward compatibility:
+
+```ts
+// ⚠️ Deprecated: Use method() instead
+rpc.registerMethod("methodName", handler);
+
+// ⚠️ Deprecated: Use enableMethodListing() instead
+rpc.registerListMethods("system.listMethods");
+
+// ✅ Recommended: Current API
+rpc.method("methodName", handler);
+rpc.enableMethodListing("system.listMethods");
+```
+
+The `method` API provides better TypeScript support, validation capabilities, and clearer intent for method registration.
 
 ### Input and Output Validation
 
@@ -209,7 +223,7 @@ const greetParamsSchema = z.object({
 const greetResultSchema = z.string();
 
 // Register methods with validation
-rpc.registerMethod(
+rpc.method(
   "add",
   (params, request, event) => {
     // params is automatically typed as { a: number; b: number }
@@ -221,7 +235,7 @@ rpc.registerMethod(
   },
 );
 
-rpc.registerMethod(
+rpc.method(
   "greet",
   (params, request, event) => {
     // params is automatically typed as { name: string; greeting?: string }
@@ -236,13 +250,13 @@ rpc.registerMethod(
 
 ### Method Introspection
 
-The JSON-RPC dispatcher provides built-in introspection capabilities through the `registerListMethods` method. This allows clients to discover available methods and their schemas:
+The JSON-RPC dispatcher provides built-in introspection capabilities through the `enableMethodListing` method. This allows clients to discover available methods and their schemas:
 
 ```ts
 import { z } from "zod";
 
 // Register your business methods with validation
-rpc.registerMethod("user.create", (params) => createUser(params), {
+rpc.method("user.create", (params) => createUser(params), {
   inputValidation: z.object({
     name: z.string(),
     email: z.string().email(),
@@ -254,7 +268,7 @@ rpc.registerMethod("user.create", (params) => createUser(params), {
   }),
 });
 
-rpc.registerMethod("user.getById", (params) => getUserById(params.id), {
+rpc.method("user.getById", (params) => getUserById(params.id), {
   inputValidation: z.object({ id: z.string() }),
   outputValidation: z.object({
     id: z.string(),
@@ -264,10 +278,10 @@ rpc.registerMethod("user.getById", (params) => getUserById(params.id), {
 });
 
 // Register the introspection method
-rpc.registerListMethods("system.listMethods");
+rpc.enableMethodListing("system.listMethods");
 
 // Optional: Hide specific methods from the list
-rpc.registerListMethods("system.listMethods", [
+rpc.enableMethodListing("system.listMethods", [
   "system.listMethods", // Hide self-reference
   "internal.debug", // Hide internal methods
 ]);
@@ -353,7 +367,7 @@ The `JsonRpcDispatcher` accepts configuration options to customize its behavior:
 ```ts
 const rpc = new JsonRpcDispatcher({
   sseEnabled: true, // Enable Server-Sent Events support for real-time streaming
-  sessionIdFactory: (event) => {
+  extractSessionId: (event) => {
     // Custom session ID extraction logic
     return event.httpRequest?.headers.get("x-session-id") || null;
   },
@@ -364,28 +378,28 @@ const rpc = new JsonRpcDispatcher({
 
 - **`sseEnabled`** (`boolean`, default: `false`): Enables Server-Sent Events (SSE) support for GET requests and session-based communication. When enabled, the dispatcher supports real-time streaming and session management. ⚠️ **This is an experimental feature.**
 
-- **`sessionIdFactory`** (`function`): Custom function to extract session IDs from JSON-RPC events. The default factory checks for:
+- **`extractSessionId`** (`function`): Custom function to extract session IDs from JSON-RPC events. The default factory checks for:
   - URL parameter `json_rpc_token`
   - HTTP header `x-json-rpc-token`
   - URL parameter `token`
 
 ### Method Registration API
 
-The `registerMethod()` function is the primary way to register JSON-RPC method handlers. It supports optional validation and provides better TypeScript integration than the legacy `use()` method.
+The `method()` function is the primary way to register JSON-RPC method handlers. It supports optional validation and provides better TypeScript integration than the legacy `use()` method.
 
 #### Basic Method Registration
 
 ```ts
 // Simple method without validation
-rpc.registerMethod("ping", async () => "pong");
+rpc.method("ping", async () => "pong");
 
 // Method with typed parameters
-rpc.registerMethod("calculateSum", async (params: { numbers: number[] }) => {
+rpc.method("calculateSum", async (params: { numbers: number[] }) => {
   return params.numbers.reduce((sum, num) => sum + num, 0);
 });
 
 // Method with access to request context
-rpc.registerMethod("getUserInfo", async (params, request, event) => {
+rpc.method("getUserInfo", async (params, request, event) => {
   const userId = params.userId;
   const httpRequest = event.httpRequest; // Access HTTP context if needed
   return await fetchUserData(userId);
@@ -397,7 +411,7 @@ rpc.registerMethod("getUserInfo", async (params, request, event) => {
 ```ts
 import { z } from "zod";
 
-rpc.registerMethod(
+rpc.method(
   "user.create",
   async (params) => {
     // params is automatically typed based on inputValidation schema
@@ -423,7 +437,7 @@ rpc.registerMethod(
 
 #### Method Registration Options
 
-When registering methods with `registerMethod()`, you can provide these options:
+When registering methods with `method()`, you can provide these options:
 
 - **`inputValidation`** (optional): Zod schema to validate input parameters
 
@@ -538,12 +552,12 @@ Sessions require a unique identifier extracted from the HTTP request. The defaul
 - **HTTP Header**: `X-JSON-RPC-Token: session123`
 - **URL Parameter**: `?token=session123`
 
-You can provide a custom session ID factory:
+You can provide a custom session ID extractor:
 
 ```ts
 const rpc = new JsonRpcDispatcher({
   sseEnabled: true,
-  sessionIdFactory: (event) => {
+  extractSessionId: (event) => {
     // Extract from custom header
     return event.httpRequest?.headers.get("x-custom-session") || null;
   },
@@ -555,19 +569,16 @@ const rpc = new JsonRpcDispatcher({
 ```ts
 const rpc = new JsonRpcDispatcher();
 
-rpc.registerMethod(
-  "calculate",
-  (params: { operation: string; values: number[] }) => {
-    switch (params.operation) {
-      case "sum":
-        return params.values.reduce((a, b) => a + b, 0);
-      case "multiply":
-        return params.values.reduce((a, b) => a * b, 1);
-      default:
-        throw new JsonRpcError(-32602, "Invalid operation");
-    }
-  },
-);
+rpc.method("calculate", (params: { operation: string; values: number[] }) => {
+  switch (params.operation) {
+    case "sum":
+      return params.values.reduce((a, b) => a + b, 0);
+    case "multiply":
+      return params.values.reduce((a, b) => a * b, 1);
+    default:
+      throw new JsonRpcError(-32602, "Invalid operation");
+  }
+});
 
 // Direct request handling
 const result = await rpc.request({
@@ -587,7 +598,7 @@ JSON-RPC provides comprehensive error handling with built-in error codes and cus
 ```ts
 import { JsonRpcError } from "artur";
 
-rpc.registerMethod("divide", (params: { a: number; b: number }) => {
+rpc.method("divide", (params: { a: number; b: number }) => {
   if (params.b === 0) {
     throw new JsonRpcError(-32603, "Division by zero", {
       code: "DIVISION_BY_ZERO",
@@ -598,7 +609,7 @@ rpc.registerMethod("divide", (params: { a: number; b: number }) => {
 });
 
 // Built-in error codes
-rpc.registerMethod("validateUser", (params: { userId: string }) => {
+rpc.method("validateUser", (params: { userId: string }) => {
   if (!params.userId) {
     // Invalid parameters
     throw new JsonRpcError(-32602, "Invalid params: userId is required");
@@ -621,7 +632,7 @@ const userSchema = z.object({
   age: z.number().min(18, "Must be at least 18 years old"),
 });
 
-rpc.registerMethod(
+rpc.method(
   "createUser",
   (params) => {
     // This method will only execute if validation passes
@@ -680,10 +691,10 @@ const sendMessageSchema = z.object({
 const chatSessions = new Map<string, Set<string>>();
 
 // Join a chat room
-rpc.registerMethod(
+rpc.method(
   "chat.join",
   (params, request, event) => {
-    const sessionId = rpc.options.sessionIdFactory(event);
+    const sessionId = rpc.options.extractSessionId(event);
     if (!sessionId) throw new JsonRpcError(-32602, "Session ID required");
 
     if (!chatSessions.has(params.room)) {
@@ -699,7 +710,7 @@ rpc.registerMethod(
 );
 
 // Send a message to all room participants
-rpc.registerMethod(
+rpc.method(
   "chat.send",
   async (params) => {
     const roomSessions = chatSessions.get(params.room);
@@ -729,7 +740,7 @@ rpc.registerMethod(
 );
 
 // Register method introspection for API discovery
-rpc.registerListMethods("system.listMethods");
+rpc.enableMethodListing("system.listMethods");
 
 // Set up the router
 const router = new Router();
