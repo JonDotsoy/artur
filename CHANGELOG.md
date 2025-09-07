@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/JonDotsoy/artur/compare/artur-v1.8.0...artur-v1.8.1) (2025-09-07)
+
+
+### Miscellaneous Chores
+
+* release 1.8.1 ([50e6135](https://github.com/JonDotsoy/artur/commit/50e613568c559430961e722f5e641fab2d689c93))
+
 ## [1.8.0](https://github.com/JonDotsoy/artur/compare/artur-v1.7.1...artur-v1.8.0) (2025-09-05)
 
 
