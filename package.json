@@ -1,7 +1,7 @@
 {
   "name": "artur",
   "description": "Lightweight web framework with URLPattern router, middleware support, and JSON-RPC 2.0 protocol for Node.js and Bun",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "type": "module",
   "module": "./lib/esm/index.js",
   "main": "./lib/cjs/index.js",
