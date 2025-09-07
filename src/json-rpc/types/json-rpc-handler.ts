@@ -1,5 +1,5 @@
-import type { JsonRpcEvent } from "./json-rpc-event";
-import type { JsonRpcRequest } from "./json-rpc-request";
+import type { JsonRpcEvent } from "./json-rpc-event.js";
+import type { JsonRpcRequest } from "./json-rpc-request.js";
 
 export type JsonRpcHandler<P = any, R = any> = (
   params: P,

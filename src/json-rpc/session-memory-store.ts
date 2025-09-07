@@ -1,5 +1,5 @@
 import { Store, Message, MemoryStore } from "@jondotsoy/utils-js/queue";
-import { shareMemory } from "./constants/share-memory";
+import { shareMemory } from "./constants/share-memory.js";
 
 /**
  * Session-specific memory store implementation.
