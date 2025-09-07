@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/JonDotsoy/artur/compare/artur-v1.8.1...artur-v1.8.2) (2025-09-07)
+
+
+### Bug Fixes
+
+* update import statements to include file extensions for consistency ([684e9da](https://github.com/JonDotsoy/artur/commit/684e9da7366676d2c132fcc42269807f8adbf5fe))
+
 ## [1.8.1](https://github.com/JonDotsoy/artur/compare/artur-v1.8.0...artur-v1.8.1) (2025-09-07)
 
 
