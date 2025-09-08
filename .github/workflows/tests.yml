@@ -11,12 +11,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+            - run: |
+                echo "nodejs 20.16.0" > .tool-versions
+                echo "bun 1.1.42" > .tool-versions
             - name: Install asdf & tools
               uses: asdf-vm/actions/install@v4
-              with:
-                skip_install: true
-            - run: |
-                asdf plugin add nodejs
-                asdf plugin add bun
-                asdf install nodejs 20.16.0
-                asdf install bun 1.1.42
