@@ -14,31 +14,33 @@ const describeWithBun = conditionalDescribe.if(ENABLE_BUN_TESTS);
 const describeWithNode = conditionalDescribe.if(ENABLE_NODE_TESTS);
 
 describeWithBun("test0", () => {
-  test("test1", async () => {
-    await using workspace = await SetupWorkspace.init();
+  test(
+    "test1",
+    async () => {
+      await using workspace = await SetupWorkspace.init();
 
-    workspace.file(`.tool-versions`, `bun 1.1.42`);
+      workspace.file(`.tool-versions`, `bun 1.1.42`);
 
-    workspace.run(
-      `
+      workspace.run(
+        `
         INFO_PATH="$PWD/info.json"
         cd ../../../../.. && make pack && make info > "$INFO_PATH"
       `,
-    );
+      );
 
-    workspace.run(
-      `
+      workspace.run(
+        `
         INFO_PATH="$PWD/info.json"
         bun init -y
         cp "$CHECKOUT/\$(cat "$INFO_PATH" | jq -r '.pkg')" "pack.tgz"
         ls -lha
         bun add "./pack.tgz"
       `,
-    );
+      );
 
-    workspace.file(
-      "app.ts",
-      `
+      workspace.file(
+        "app.ts",
+        `
       import { Router } from "artur";
       import { serve } from "bun";
 
@@ -55,47 +57,53 @@ describeWithBun("test0", () => {
 
       server.stop();
     `,
-    );
+      );
 
-    const { status } = workspace.run(`
+      const { status } = workspace.run(`
       bun run ./app.ts
     `);
 
-    expect(status).toBe(0);
-  });
+      expect(status).toBe(0);
+    },
+    {
+      timeout: 60_000,
+    },
+  );
 });
 
 describeWithNode("test2", () => {
-  test("test3", async () => {
-    await using workspace = await SetupWorkspace.init();
+  test(
+    "test3",
+    async () => {
+      await using workspace = await SetupWorkspace.init();
 
-    workspace.file(`.tool-versions`, `nodejs 20.16.0`);
+      workspace.file(`.tool-versions`, `nodejs 20.16.0`);
 
-    workspace.run(
-      `
+      workspace.run(
+        `
         INFO_PATH="$PWD/info.json"
         cd ../../../../.. && make pack && make info > "$INFO_PATH"
       `,
-    );
+      );
 
-    workspace.file(
-      "package.json",
-      JSON.stringify({
-        type: "module",
-        private: true,
-      }),
-    );
+      workspace.file(
+        "package.json",
+        JSON.stringify({
+          type: "module",
+          private: true,
+        }),
+      );
 
-    workspace.run(
-      `
+      workspace.run(
+        `
         INFO_PATH="$PWD/info.json"
         npm install "$CHECKOUT/\$(cat "$INFO_PATH" | jq -r '.pkg')"
       `,
-    );
+      );
 
-    workspace.file(
-      "app.js",
-      `
+      workspace.file(
+        "app.js",
+        `
       import { Router } from "artur";
       import { createServer } from "http";
 
@@ -113,12 +121,16 @@ describeWithNode("test2", () => {
         server.close();
       });
     `,
-    );
+      );
 
-    const { status } = workspace.run(`
+      const { status } = workspace.run(`
       node ./app.js
     `);
 
-    expect(status).toBe(0);
-  });
+      expect(status).toBe(0);
+    },
+    {
+      timeout: 60_000,
+    },
+  );
 });
