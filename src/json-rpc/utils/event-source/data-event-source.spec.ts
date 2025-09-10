@@ -4,9 +4,10 @@ import {
   type DataEventSource,
 } from "./data-event-source.js";
 import { serve, type Server } from "bun";
-import { NativeEventSource, EventSourcePolyfill } from "event-source-polyfill";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
-const EventSource = NativeEventSource ?? EventSourcePolyfill;
+type EventSource = EventSourcePolyfill;
+const EventSource = EventSourcePolyfill;
 
 describe("DataEventSourceEncoder", () => {
   test("should create basic data event with only data field", () => {
@@ -366,7 +367,9 @@ describe("DataEventSource integration tests", () => {
   test("should receive custom event type messages", async () => {
     const { promise, resolve } = Promise.withResolvers();
 
-    eventSource.addEventListener("hello", (message) => resolve(message.data));
+    eventSource.addEventListener("hello", (message: any) =>
+      resolve(message.data),
+    );
 
     publish({
       event: "hello",
@@ -379,7 +382,7 @@ describe("DataEventSource integration tests", () => {
   test("should preserve event ID in lastEventId property", async () => {
     const { promise, resolve } = Promise.withResolvers();
 
-    eventSource.addEventListener("hello", (message) =>
+    eventSource.addEventListener("hello", (message: any) =>
       resolve(message.lastEventId),
     );
 

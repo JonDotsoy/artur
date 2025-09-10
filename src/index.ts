@@ -4,4 +4,8 @@ export { describeErrorResponse } from "./utils/describeErrorResponse.js";
 export {
   JsonRpcRouter,
   JsonRpcRouter as JsonRpcDispatcher,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
+  type JsonRpcErrorResponse,
+  type JsonRpcResultResponse,
 } from "./json-rpc/json-rpc-router.js";

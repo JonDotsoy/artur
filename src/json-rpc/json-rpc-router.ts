@@ -6,6 +6,7 @@ import type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
 import type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
 import type { JsonRpcResponse } from "./types/json-rpc-response.js";
 import type { JsonRpcRequest } from "./types/json-rpc-request.js";
+import type { JsonRpcNotification } from "./types/json-rpc-notification.js";
 import { JsonRpcError } from "./json-rpc-error.js";
 import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
@@ -17,6 +18,12 @@ import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-optio
 import { defaultExtractSessionId } from "./default-extract-session-id.js";
 import { sessionMemoryStore } from "./create-session-memory-store.1.js";
 import { Session } from "./session.js";
+
+export type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
+export type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
+export type { JsonRpcResponse } from "./types/json-rpc-response.js";
+export type { JsonRpcRequest } from "./types/json-rpc-request.js";
+export type { JsonRpcNotification } from "./types/json-rpc-notification.js";
 
 /**
  * Main JSON-RPC dispatcher class.

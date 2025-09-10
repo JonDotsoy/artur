@@ -1,5 +1,5 @@
 import { test, expect, mock, beforeEach, afterEach, describe } from "bun:test";
-import { JsonRpcRouter } from "./json-rpc-router.js";
+import { JsonRpcRouter, type JsonRpcNotification } from "./json-rpc-router.js";
 import { JsonRpcError } from "./json-rpc-error.js";
 import { type JsonRpcResponse } from "./types/json-rpc-response.js";
 import { type JsonRpcRequest } from "./types/json-rpc-request.js";
@@ -34,7 +34,7 @@ describe("JsonRpcRouter", () => {
   });
 
   test("should register method handler and receive request object when called", async () => {
-    const p = Promise.withResolvers<JsonRpcRequest>();
+    const p = Promise.withResolvers<JsonRpcRequest | JsonRpcNotification>();
     await router.use("testMethod", (params, request) => {
       p.resolve(request);
     });
@@ -54,7 +54,7 @@ describe("JsonRpcRouter", () => {
   });
 
   test("should register method handler using registerMethod API", async () => {
-    const p = Promise.withResolvers<JsonRpcRequest>();
+    const p = Promise.withResolvers<JsonRpcRequest | JsonRpcNotification>();
     await router.method("testMethod", (params, request) => {
       p.resolve(request);
     });
