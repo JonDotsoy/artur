@@ -6,9 +6,9 @@ import type { Fetch } from "./types/fetch-type.js";
 import type { Middleware } from "./types/middleware.js";
 import { Route } from "./route.js";
 import {
-  useArgumentParser,
-  type UseArguments,
-} from "./utils/use-argument-parser.js";
+  useRouteArguments,
+  type RouteArguments,
+} from "./utils/parse-route-arguments.js";
 import { RequestReflect } from "./utils/request-reflect.js";
 import type { URLParams } from "./types/url-params.js";
 import { urlParamsSymbol } from "./constants/url-params-symbol.js";
@@ -94,8 +94,126 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     return this.route;
   }
 
-  route<T>(...args: UseArguments) {
-    const route = useArgumentParser(...args);
+  /**
+   * Registers a new route with the router.
+   *
+   * This method accepts various argument patterns to define routes with different levels of specificity.
+   * Routes are tested in the order they are registered, and the first matching route handles the request.
+   *
+   * @template T - Generic type parameter for the route
+   * @param args - Variable arguments that can follow one of the following patterns:
+   *
+   * **Pattern 1:** `route(fetch)`
+   * - Registers a route that matches all requests (`*` pattern)
+   * - @param fetch - Function that handles the request and returns a Response
+   * - Useful for global middleware or fallback handling
+   *
+   * **Pattern 2:** `route(urlPattern, fetch)`
+   * - Registers a route with a specific URL pattern
+   * - @param urlPattern - URLPattern instance or string pattern to match against request URLs
+   * - @param fetch - Function that handles the request and returns a Response
+   * - Supports URL parameters like `/users/:id` or wildcards like `/api/*`
+   *
+   * **Pattern 3:** `route(test, fetch)`
+   * - Registers a route with custom test logic
+   * - @param test - Function that determines if the route matches the request (can be async)
+   * - @param fetch - Function that handles the request and returns a Response
+   * - Allows complex matching logic based on headers, body, etc.
+   *
+   * **Pattern 4:** `route(method, urlPattern, fetch)`
+   * - Registers a route with specific HTTP method and URL pattern
+   * - @param method - HTTP method ("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "TRACE", "CONNECT", "ALL")
+   * - @param urlPattern - String pattern to match against request URLs
+   * - @param fetch - Function that handles the request and returns a Response
+   * - Most common combination for REST APIs
+   *
+   * **Pattern 5:** `route(urlPattern, options)`
+   * - Registers a route with URL pattern and configuration options
+   * - @param urlPattern - String or URLPattern instance to match against request URLs
+   * - @param options - Configuration object with optional method, middlewares array, and required fetch function
+   * - Allows more granular configuration with route-specific middlewares
+   *
+   * **Pattern 6:** `route(fetch, options)`
+   * - Registers a global route with configuration options
+   * - @param fetch - Function that handles the request and returns a Response
+   * - @param options - Object with optional method and middlewares
+   *
+   * **Pattern 7:** `route(method, urlPattern, options)`
+   * - Registers a route with method, pattern, and options
+   * - @param method - Specific HTTP method
+   * - @param urlPattern - String or URLPattern for matching
+   * - @param options - Object with fetch function and optional middlewares
+   *
+   * @returns The router instance for method chaining
+   *
+   * @example
+   * ```typescript
+   * // Match all requests (global middleware)
+   * router.route(async (request) => {
+   *   console.log(`${request.method} ${request.url}`);
+   *   return new Response("Hello World");
+   * });
+   *
+   * // Match specific URL pattern (GET by default)
+   * router.route("/api/users", async (request) =>
+   *   Response.json({ users: await getUsers() })
+   * );
+   *
+   * // Match with HTTP method and URL parameters
+   * router.route("GET", "/api/users/:id", async (request) => {
+   *   const { id } = params(request);
+   *   const user = await getUserById(id);
+   *   return Response.json({ user });
+   * });
+   *
+   * // Custom test function (e.g., authentication)
+   * router.route(
+   *   (request) => request.headers.get("authorization") !== null,
+   *   async (request) => Response.json({ authenticated: true })
+   * );
+   *
+   * // With middlewares and advanced configuration
+   * router.route("/api/admin", {
+   *   method: "POST",
+   *   middlewares: [authMiddleware, logMiddleware, validateMiddleware],
+   *   fetch: async (request) => {
+   *     const body = await request.json();
+   *     return Response.json({ created: await createAdminResource(body) });
+   *   }
+   * });
+   *
+   * // Multiple HTTP methods handling
+   * router.route("PUT", "/api/users/:id", async (request) => {
+   *   const { id } = params(request);
+   *   const updates = await request.json();
+   *   return Response.json({ user: await updateUser(id, updates) });
+   * });
+   *
+   * // Wildcards and complex patterns
+   * router.route("/static/*", async (request) => {
+   *   const url = new URL(request.url);
+   *   const filePath = url.pathname.replace("/static/", "");
+   *   return serveStaticFile(filePath);
+   * });
+   *
+   * // Route chaining
+   * router
+   *   .route("GET", "/health", () => Response.json({ status: "ok" }))
+   *   .route("GET", "/version", () => Response.json({ version: "1.0.0" }))
+   *   .route("*", () => new Response("Not Found", { status: 404 }));
+   * ```
+   *
+   * @throws {ArgumentsError} When arguments don't match any valid pattern
+   *
+   * @see {@link RouteArguments} for detailed argument type definitions
+   * @see {@link Route} for the internal route representation
+   * @see {@link params} for extracting URL parameters in fetch functions
+   * @see {@link Middleware} for middleware information
+   *
+   * @since 1.0.0
+   */
+  route<T>(...args: RouteArguments) {
+    const route = useRouteArguments(...args);
 
     if (route) {
       this.routes.push(route);

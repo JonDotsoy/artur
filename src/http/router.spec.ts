@@ -51,6 +51,20 @@ test("should map a route and execute their fetch function", async () => {
   expect(fetch).toBeCalled();
 });
 
+test("shoulds map a route and execute their fetch function", async () => {
+  const router = new Router();
+
+  const fetch = mock(async () => new Response("ok"));
+
+  router.route(`/a`, fetch);
+
+  const res = await router.fetch(new Request("http://localhost/a"));
+
+  expect(res).toBeInstanceOf(Response);
+  expect(res).toMatchObject({ status: 200 });
+  expect(fetch).toBeCalled();
+});
+
 test("should request a empty router and expect a 404 response", async () => {
   const router = new Router();
 
@@ -170,6 +184,7 @@ test("should call the router with middleware", async () => {
 test.skip("should transfer middleware when its match", async () => {
   const router = new Router();
 
+  // @ts-ignore
   router.route("ALL", "/hello", {
     // @ts-ignore
     middlewares: [
@@ -198,6 +213,7 @@ test.skip("should transfer middleware when its match", async () => {
 test.skip("should use a route with extra test evaluation", async () => {
   const router = new Router();
 
+  // @ts-ignore
   router.route("ALL", "/hello", {
     // @ts-ignore
     test: (request) => request.headers.get("x-able") === "True",
