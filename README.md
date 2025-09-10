@@ -413,7 +413,6 @@ rpc.method(
 When registering methods with `method()`, you can provide these options:
 
 - **`inputValidation`** (optional): Zod schema to validate input parameters
-
   - Automatically validates parameters before calling the handler
   - Returns JSON-RPC error (-32602 Invalid params) if validation fails
   - Provides automatic TypeScript typing for the params argument
