@@ -306,20 +306,18 @@ const service = new CustomService({ apiKey: "secret" });
 router.route("*", "/api/service", service);
 ```
 
-This pattern is used internally by Artur's `JsonRpcDispatcher` and other built-in components to provide seamless integration with the routing system.
+This pattern is used internally by Artur's `JsonRpcRouter` and other built-in components to provide seamless integration with the routing system.
 
 ## JSON-RPC 2.0 Support
 
-Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcDispatcher` class. This enables you to build real-time applications with remote procedure calls, session management, and Server-Sent Events (SSE) streaming.
-
-> **Note**: `JsonRpcDispatcher` is an alias for `JsonRpcRouter`. Both class names are interchangeable and provide the same functionality.
+Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcRouter` class. This enables you to build real-time applications with remote procedure calls, session management, and Server-Sent Events (SSE) streaming.
 
 ### Basic JSON-RPC Setup
 
 ```ts
-import { JsonRpcDispatcher, Router } from "artur";
+import { JsonRpcRouter, Router } from "artur";
 
-const rpc = new JsonRpcDispatcher();
+const rpc = new JsonRpcRouter();
 
 // Register RPC methods using the method API
 rpc.method("add", (params: { a: number; b: number }) => {
@@ -337,7 +335,7 @@ router.route("POST", "/api/rpc", rpc);
 // Alternative: Use the flexible route patterns
 router.route("/api/rpc", rpc); // Supports all HTTP methods by default
 
-// The JsonRpcDispatcher uses Router.customRoute internally for seamless integration
+// The JsonRpcRouter uses Router.customRoute internally for seamless integration
 // You can access the underlying fetch handler if needed:
 // const fetchHandler = rpc[Router.customRoute].fetch;
 ```
@@ -504,10 +502,10 @@ console.log(result);
 
 ### Configuration Options
 
-The `JsonRpcDispatcher` accepts configuration options to customize its behavior:
+The `JsonRpcRouter` accepts configuration options to customize its behavior:
 
 ```ts
-const rpc = new JsonRpcDispatcher({
+const rpc = new JsonRpcRouter({
   sseEnabled: true, // Enable Server-Sent Events support for real-time streaming
   extractSessionId: (event) => {
     // Custom session ID extraction logic
@@ -627,7 +625,7 @@ const response = await fetch("/api/rpc", {
 
 ```ts
 // First, enable SSE support when creating the dispatcher
-const rpc = new JsonRpcDispatcher({
+const rpc = new JsonRpcRouter({
   sseEnabled: true,
 });
 
@@ -663,7 +661,7 @@ eventSource.close();
 The JSON-RPC dispatcher supports session-based communication for building real-time applications. Sessions allow you to queue requests and consume responses asynchronously.
 
 ```ts
-const rpc = new JsonRpcDispatcher({
+const rpc = new JsonRpcRouter({
   sseEnabled: true, // Required for session support
 });
 
@@ -696,7 +694,7 @@ Sessions require a unique identifier extracted from the HTTP request. The defaul
 You can provide a custom session ID extractor:
 
 ```ts
-const rpc = new JsonRpcDispatcher({
+const rpc = new JsonRpcRouter({
   sseEnabled: true,
   extractSessionId: (event) => {
     // Extract from custom header
@@ -708,7 +706,7 @@ const rpc = new JsonRpcDispatcher({
 ### Direct Usage (without Router)
 
 ```ts
-const rpc = new JsonRpcDispatcher();
+const rpc = new JsonRpcRouter();
 
 rpc.method("calculate", (params: { operation: string; values: number[] }) => {
   switch (params.operation) {
@@ -809,10 +807,10 @@ rpc.method(
 Here's a complete example showing how to build a real-time chat application with validation:
 
 ```ts
-import { JsonRpcDispatcher, Router } from "artur";
+import { JsonRpcRouter, Router } from "artur";
 import { z } from "zod";
 
-const rpc = new JsonRpcDispatcher({
+const rpc = new JsonRpcRouter({
   sseEnabled: true,
 });
 
@@ -936,7 +934,7 @@ For TypeScript projects, Artur exports the following JSON-RPC classes and types:
 
 ```ts
 // Main JSON-RPC class available from "artur"
-import { JsonRpcDispatcher } from "artur";
+import { JsonRpcRouter } from "artur";
 
 // For additional types and utilities, import directly from JSON-RPC module
 import {
