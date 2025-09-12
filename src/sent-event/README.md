@@ -32,9 +32,7 @@ The main class that handles Server-Sent Events streaming. It implements the Even
 ```typescript
 export class SentEventStream {
   constructor(options?: Options);
-  create(
-    request: SentEventRequest,
-  ): Promise<ReadableStream<DataEventSource> | null>;
+  create(request: SentEventRequest): Promise<ReadableStream<DataEventSource>>;
   fetch(request: Request): Promise<Response>;
   get [customRouteSymbol](): {
     test: () => boolean;
@@ -50,13 +48,13 @@ Creates a new `SentEventStream` instance with optional configuration.
 **Parameters:**
 
 - `options` (Optional): Configuration options for the stream
-  - `create`: Function to create the event stream
+  - `start`: Function to create the event stream
 
 **Example:**
 
 ```typescript
 const stream = new SentEventStream({
-  create: async (request) => {
+  start: async (request) => {
     return new ReadableStream({
       start(controller) {
         controller.enqueue({ data: "Hello World" });
@@ -79,7 +77,7 @@ Creates a readable stream for the given request.
 
 **Returns:**
 
-- `Promise<ReadableStream<DataEventSource> | null>`: A promise that resolves to a ReadableStream or null if no create function is provided
+- `Promise<ReadableStream<DataEventSource>>`: A promise that resolves to a ReadableStream. If no start function is provided, returns an empty stream that immediately closes.
 
 **Example:**
 
@@ -118,7 +116,7 @@ const response = await sentEventStream.fetch(request);
 
 ##### `[customRouteSymbol]` (Getter)
 
-Custom route symbol implementation for HTTP router integration. Allows this stream to be used as a route handler.
+Custom route symbol implementation for HTTP router integration. Allows this stream to be used as a route handler in the HTTP router. The implementation defaults to handling GET requests and accepts all routes.
 
 **Returns:**
 
@@ -155,14 +153,17 @@ Gets the last event ID received by the client.
 
 ## Types
 
-### Create
+### Start
 
 Function type for creating a readable stream of Server-Sent Events.
 
 ```typescript
-type Create = (
+type Start = (
   request: SentEventRequest,
-) => Promise<ReadableStream<DataEventSource>> | ReadableStream<DataEventSource>;
+) =>
+  | Promise<ReadableStream<DataEventSource> | void>
+  | ReadableStream<DataEventSource>
+  | void;
 ```
 
 ### Options
@@ -171,13 +172,30 @@ Configuration options for `SentEventStream`.
 
 ```typescript
 type Options = {
-  create?: Create;
+  start?: Start;
 };
 ```
 
 ### DataEventSource
 
-Represents an event source data structure (imported from `../json-rpc/utils/event-source/data-event-source`).
+Represents an event source data structure (imported from `./event-source/data-event-source`).
+
+### DataEventSourceEncoder
+
+A utility class for encoding DataEventSource objects into the standard Server-Sent Events format. This encoder is used internally by the SentEventStream to transform event data into the proper SSE format.
+
+```typescript
+export class DataEventSourceEncoder {
+  encode(payload: DataEventSource): Uint8Array;
+}
+```
+
+The encoder handles:
+
+- Event type and ID serialization
+- Multi-line data encoding
+- Retry value formatting
+- Proper SSE protocol formatting
 
 ## Usage Examples
 
@@ -187,7 +205,7 @@ Represents an event source data structure (imported from `../json-rpc/utils/even
 import { SentEventStream } from "./sent-event";
 
 const stream = new SentEventStream({
-  create: async (request) => {
+  start: async (request) => {
     return new ReadableStream({
       start(controller) {
         // Send initial data
@@ -222,7 +240,7 @@ const router = new Router();
 router.route(
   "/events",
   new SentEventStream({
-    create: async (request) => {
+    start: async (request) => {
       console.log(`Client last event ID: ${request.lastEventID}`);
 
       return new ReadableStream({
@@ -243,7 +261,7 @@ router.route(
 
 ```typescript
 const stream = new SentEventStream({
-  create: async (request) => {
+  start: async (request) => {
     const startId = request.lastEventID ? parseInt(request.lastEventID) + 1 : 1;
 
     return new ReadableStream({
@@ -273,7 +291,7 @@ const stream = new SentEventStream({
 
 ```typescript
 const stream = new SentEventStream({
-  create: async (request) => {
+  start: async (request) => {
     try {
       // Some async operation that might fail
       const data = await fetchData();
@@ -339,12 +357,12 @@ eventSource.close();
 2. **Handle stream cleanup**: Use the `cancel` method in ReadableStream for proper resource cleanup
 3. **Implement resumption**: Use `lastEventID` for reliable event delivery
 4. **Use structured data**: Leverage the `DataEventSource` type for consistent event formatting
-5. **Error handling**: Implement proper error handling in your create function
+5. **Error handling**: Implement proper error handling in your start function
 6. **Connection management**: Consider implementing heartbeat mechanisms for long-lived connections
 
 ### Dependencies
 
 - `../http/constants/custom-options-symbol`: For router integration
-- `../json-rpc/utils/event-source/data-event-source`: For event data encoding
+- `./event-source/data-event-source`: For event data encoding and types
 
 This module provides a robust foundation for implementing real-time features using Server-Sent Events in web applications.
