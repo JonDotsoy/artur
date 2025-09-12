@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/JonDotsoy/artur/compare/artur-v1.9.1...artur-v1.9.2) (2025-09-12)
+
+
+### Bug Fixes
+
+* remove CommonJS support and add comprehensive E2E compatibility tests ([#54](https://github.com/JonDotsoy/artur/issues/54)) ([7ab3827](https://github.com/JonDotsoy/artur/commit/7ab38276143866414eb9f75cea6c359a0c81d3c6))
+
 ## [1.9.1](https://github.com/JonDotsoy/artur/compare/artur-v1.9.0...artur-v1.9.1) (2025-09-12)
 
 
