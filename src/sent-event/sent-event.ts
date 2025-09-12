@@ -11,16 +11,19 @@ export { type DataEventSource } from "./event-source/data-event-source.js";
  * @param request - The sent event request containing client information
  * @returns A promise that resolves to a ReadableStream or a ReadableStream directly
  */
-type Create = (
+type Start = (
   request: SentEventRequest,
-) => Promise<ReadableStream<DataEventSource>> | ReadableStream<DataEventSource>;
+) =>
+  | Promise<ReadableStream<DataEventSource> | void>
+  | ReadableStream<DataEventSource>
+  | void;
 
 /**
  * Configuration options for SentEventStream.
  */
 type Options = {
   /** Optional function to create the event stream */
-  create?: Create;
+  start?: Start;
 };
 
 /**
@@ -53,14 +56,14 @@ export class SentEventRequest {
  * Can be integrated with HTTP routers and supports custom stream creation logic.
  */
 export class SentEventStream {
-  #start?: Create;
+  #start?: Start;
 
   /**
    * Creates a new SentEventStream instance.
    * @param options - Configuration options for the stream
    */
   constructor(options: Options = {}) {
-    this.#start = options.create;
+    this.#start = options.start;
   }
 
   /**
@@ -68,8 +71,17 @@ export class SentEventStream {
    * @param request - The sent event request containing client information
    * @returns A promise that resolves to a ReadableStream or null if no create function is provided
    */
-  create = async (request: SentEventRequest) => {
-    return this.#start?.(request) ?? null;
+  create = async (
+    request: SentEventRequest,
+  ): Promise<ReadableStream<DataEventSource>> => {
+    return (
+      (await this.#start?.(request)) ??
+      new ReadableStream<DataEventSource>({
+        start(controller) {
+          controller.close();
+        },
+      })
+    );
   };
 
   /**
@@ -117,10 +129,9 @@ export class SentEventStream {
    * Allows this stream to be used as a route handler in the HTTP router.
    * @returns An object with test and fetch methods for router compatibility
    */
-  get [customRouteSymbol]() {
-    return {
-      test: () => true,
-      fetch: this.fetch,
-    };
-  }
+  [customRouteSymbol] = defaultRouteArguments({
+    method: "GET",
+    test: () => true,
+    fetch: this.fetch,
+  });
 }

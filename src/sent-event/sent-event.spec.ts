@@ -19,7 +19,7 @@ describe("SentEvent", () => {
 
   test("should stream data successfully when accept header is text/event-stream", async () => {
     const stream = new SentEventStream({
-      async create(request) {
+      async start(request) {
         return new ReadableStream({
           start(controller) {
             controller.enqueue({ data: "hello world" });
@@ -47,7 +47,7 @@ describe("SentEvent", () => {
 
   test("should automatically close stream and return complete response text", async () => {
     const stream = new SentEventStream({
-      async create(request) {
+      async start(request) {
         return new ReadableStream({
           start(controller) {
             controller.enqueue({ data: "auto close" });
@@ -75,7 +75,7 @@ describe("SentEvent", () => {
     router.route(
       "/sse",
       new SentEventStream({
-        async create(request) {
+        async start(request) {
           return new ReadableStream({
             start(controller) {
               controller.enqueue({ data: "from router" });
@@ -100,7 +100,7 @@ describe("SentEvent", () => {
 
   test("should properly handle stream cancellation and cleanup timeouts", async () => {
     const stream = new SentEventStream({
-      async create(request) {
+      async start(request) {
         let timeout: any;
         return new ReadableStream({
           start(controller) {
@@ -141,12 +141,15 @@ describe("SentEvent", () => {
 
     const readable = await stream.create(new SentEventRequest("last-event-id"));
 
-    expect(readable).toBeNull();
+    expect(readable).not.toBeNull();
+
+    const data = await readable.text();
+    expect(data).toBe("");
   });
 
   test("should create readable stream when create function is provided", async () => {
     const stream = new SentEventStream({
-      create: () =>
+      start: () =>
         new ReadableStream({
           start(controller) {
             controller.enqueue({ data: "from create" });
