@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import {
-  parseRouteArguments,
-} from "./parse-route-arguments";
+import { parseRouteArguments } from "./parse-route-arguments";
 import { URLPattern } from "urlpattern-polyfill";
 import type { Fetch } from "../types/fetch-type";
+import { customOptionsSymbol } from "../constants/custom-options-symbol";
 
 describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   const testRequest = mock((request: Request) => true);
@@ -11,7 +10,9 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   const urlPattern = "/";
   const urlPatternB = new URLPattern({ pathname: "/" });
   const fetch = mock(async (request: Request) => Response.json());
-  const middleware = mock(async (fetch: Fetch) => async (request: Request) => fetch(request));
+  const middleware = mock(
+    async (fetch: Fetch) => async (request: Request) => fetch(request),
+  );
   const middlewares = [middleware];
 
   beforeEach(() => {
@@ -21,7 +22,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse method, urlPattern string, and fetch function", async () => {
-    const result = parseRouteArguments(method, urlPattern, fetch)
+    const result = parseRouteArguments(method, urlPattern, fetch);
 
     expect(result).toBeObject();
     expect(result.method).toEqual(method);
@@ -30,7 +31,9 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse method, urlPattern string, fetch function, and middlewares option", async () => {
-    const result = parseRouteArguments(method, urlPattern, fetch, { middlewares })
+    const result = parseRouteArguments(method, urlPattern, fetch, {
+      middlewares,
+    });
 
     expect(result).toBeObject();
     expect(result.method).toEqual(method);
@@ -40,7 +43,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse method, URLPattern instance, and fetch function", async () => {
-    const result = parseRouteArguments(method, urlPatternB, fetch)
+    const result = parseRouteArguments(method, urlPatternB, fetch);
 
     expect(result).toBeObject();
     expect(result.method).toEqual(method);
@@ -49,7 +52,9 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse method, URLPattern instance, fetch function, and middlewares option", async () => {
-    const result = parseRouteArguments(method, urlPatternB, fetch, { middlewares })
+    const result = parseRouteArguments(method, urlPatternB, fetch, {
+      middlewares,
+    });
 
     expect(result).toBeObject();
     expect(result.method).toEqual(method);
@@ -59,7 +64,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string and fetch function (method defaults to GET)", async () => {
-    const result = parseRouteArguments(urlPattern, fetch)
+    const result = parseRouteArguments(urlPattern, fetch);
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -67,7 +72,10 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string, fetch function, and options with method and middlewares", async () => {
-    const result = parseRouteArguments(urlPattern, fetch, { method, middlewares })
+    const result = parseRouteArguments(urlPattern, fetch, {
+      method,
+      middlewares,
+    });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -77,7 +85,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string, fetch function, and options with method only", async () => {
-    const result = parseRouteArguments(urlPattern, fetch, { method })
+    const result = parseRouteArguments(urlPattern, fetch, { method });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -86,7 +94,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string, fetch function, and options with middlewares only", async () => {
-    const result = parseRouteArguments(urlPattern, fetch, { middlewares })
+    const result = parseRouteArguments(urlPattern, fetch, { middlewares });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -95,15 +103,65 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string and options object with fetch property", async () => {
-    const result = parseRouteArguments(urlPattern, { fetch })
+    const result = parseRouteArguments(urlPattern, { fetch });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
     expect(result.fetch).toEqual(fetch);
   });
 
+  test("should parse urlPattern string and options object with fetch property using custom options symbol", async () => {
+    const result = parseRouteArguments(urlPattern, {
+      [customOptionsSymbol]: { fetch },
+    });
+
+    expect(result).toBeObject();
+    expect(result.urlPattern).toEqual(urlPattern);
+    expect(result.fetch).toEqual(fetch);
+  });
+
+  test("should parse method, urlPattern string, and options object with fetch property", async () => {
+    const result = parseRouteArguments(method, urlPattern, { fetch });
+
+    expect(result).toBeObject();
+    expect(result.method).toEqual(method);
+    expect(result.urlPattern).toEqual(urlPattern);
+    expect(result.fetch).toEqual(fetch);
+  });
+
+  test("should parse method, urlPattern string, and options object with fetch property using custom options symbol", async () => {
+    const result = parseRouteArguments(method, urlPattern, {
+      [customOptionsSymbol]: { fetch },
+    });
+
+    expect(result).toBeObject();
+    expect(result.method).toEqual(method);
+    expect(result.urlPattern).toEqual(urlPattern);
+    expect(result.fetch).toEqual(fetch);
+  });
+
   test("should parse urlPattern string and options object with fetch, method, and middlewares", async () => {
-    const result = parseRouteArguments(urlPattern, { fetch, method, middlewares })
+    const result = parseRouteArguments(urlPattern, {
+      fetch,
+      method,
+      middlewares,
+    });
+
+    expect(result).toBeObject();
+    expect(result.urlPattern).toEqual(urlPattern);
+    expect(result.fetch).toEqual(fetch);
+    expect(result.method).toEqual(method);
+    expect(result.middlewares).toEqual(middlewares);
+  });
+
+  test("should parse urlPattern string and options object with fetch, method, and middlewares using custom options symbol", async () => {
+    const result = parseRouteArguments(urlPattern, {
+      [customOptionsSymbol]: {
+        fetch,
+        method,
+        middlewares,
+      },
+    });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -113,7 +171,18 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string and options object with fetch and method", async () => {
-    const result = parseRouteArguments(urlPattern, { fetch, method })
+    const result = parseRouteArguments(urlPattern, { fetch, method });
+
+    expect(result).toBeObject();
+    expect(result.urlPattern).toEqual(urlPattern);
+    expect(result.fetch).toEqual(fetch);
+    expect(result.method).toEqual(method);
+  });
+
+  test("should parse urlPattern string and options object with fetch and method using custom options symbol", async () => {
+    const result = parseRouteArguments(urlPattern, {
+      [customOptionsSymbol]: { fetch, method },
+    });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -122,7 +191,20 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string and options object with fetch and middlewares (no method, no test)", async () => {
-    const result = parseRouteArguments(urlPattern, { fetch, middlewares })
+    const result = parseRouteArguments(urlPattern, { fetch, middlewares });
+
+    expect(result).toBeObject();
+    expect(result.urlPattern).toEqual(urlPattern);
+    expect(result.fetch).toEqual(fetch);
+    expect(result.middlewares).toEqual(middlewares);
+    expect(result.method).toBeUndefined();
+    expect(result.test).toBeUndefined();
+  });
+
+  test("should parse urlPattern string and options object with fetch and middlewares using custom options symbol (no method, no test)", async () => {
+    const result = parseRouteArguments(urlPattern, {
+      [customOptionsSymbol]: { fetch, middlewares },
+    });
 
     expect(result).toBeObject();
     expect(result.urlPattern).toEqual(urlPattern);
@@ -133,7 +215,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse empty arguments and return empty object", async () => {
-    const result = parseRouteArguments()
+    const result = parseRouteArguments();
 
     expect(result).toBeObject();
     expect(result.method).toBeUndefined();
@@ -144,7 +226,18 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse options object with fetch property only", async () => {
-    const result = parseRouteArguments({ fetch })
+    const result = parseRouteArguments({ fetch });
+
+    expect(result).toBeObject();
+    expect(result.method).toBeUndefined();
+    expect(result.urlPattern).toBeUndefined();
+    expect(result.fetch).toEqual(fetch);
+    expect(result.middlewares).toBeUndefined();
+    expect(result.test).toBeUndefined();
+  });
+
+  test("should parse options object with fetch property nested under custom options symbol", async () => {
+    const result = parseRouteArguments({ [customOptionsSymbol]: { fetch } });
 
     expect(result).toBeObject();
     expect(result.method).toBeUndefined();
@@ -155,7 +248,21 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse options object with fetch, method, and middlewares properties", async () => {
-    const result = parseRouteArguments({ fetch, method, middlewares })
+    const result = parseRouteArguments({ fetch, method, middlewares });
+
+    expect(result).toBeObject();
+    expect(result.method).toEqual(method);
+    expect(result.urlPattern).toBeUndefined();
+    expect(result.fetch).toEqual(fetch);
+    expect(result.middlewares).toBeInstanceOf(Array);
+    expect(result.middlewares).toEqual(middlewares);
+    expect(result.test).toBeUndefined();
+  });
+
+  test("should parse options object with fetch, method, and middlewares properties using custom options symbol", async () => {
+    const result = parseRouteArguments({
+      [customOptionsSymbol]: { fetch, method, middlewares },
+    });
 
     expect(result).toBeObject();
     expect(result.method).toEqual(method);
@@ -167,7 +274,20 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse options object with fetch and method properties", async () => {
-    const result = parseRouteArguments({ fetch, method })
+    const result = parseRouteArguments({ fetch, method });
+
+    expect(result).toBeObject();
+    expect(result.method).toEqual(method);
+    expect(result.urlPattern).toBeUndefined();
+    expect(result.fetch).toEqual(fetch);
+    expect(result.middlewares).toBeUndefined();
+    expect(result.test).toBeUndefined();
+  });
+
+  test("should parse options object with fetch and method properties using custom options symbol", async () => {
+    const result = parseRouteArguments({
+      [customOptionsSymbol]: { fetch, method },
+    });
 
     expect(result).toBeObject();
     expect(result.method).toEqual(method);
@@ -178,7 +298,21 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse options object with fetch and middlewares properties (no method, no test)", async () => {
-    const result = parseRouteArguments({ fetch, middlewares })
+    const result = parseRouteArguments({ fetch, middlewares });
+
+    expect(result).toBeObject();
+    expect(result.method).toBeUndefined();
+    expect(result.urlPattern).toBeUndefined();
+    expect(result.fetch).toEqual(fetch);
+    expect(result.middlewares).toBeInstanceOf(Array);
+    expect(result.middlewares).toEqual(middlewares);
+    expect(result.test).toBeUndefined();
+  });
+
+  test("should parse options object with fetch and middlewares properties using custom options symbol (no method, no test)", async () => {
+    const result = parseRouteArguments({
+      [customOptionsSymbol]: { fetch, middlewares },
+    });
 
     expect(result).toBeObject();
     expect(result.method).toBeUndefined();
@@ -190,7 +324,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse test function and fetch function", async () => {
-    const result = parseRouteArguments(testRequest, fetch)
+    const result = parseRouteArguments(testRequest, fetch);
 
     expect(result).toBeObject();
     expect(result.test).toEqual(testRequest);
@@ -201,7 +335,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse test function, fetch function, and options with middlewares", async () => {
-    const result = parseRouteArguments(testRequest, fetch, { middlewares })
+    const result = parseRouteArguments(testRequest, fetch, { middlewares });
 
     expect(result).toBeObject();
     expect(result.test).toEqual(testRequest);
@@ -210,5 +344,4 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
     expect(result.middlewares).toEqual(middlewares);
     expect(result.urlPattern).toBeUndefined();
   });
-
 });
