@@ -44,6 +44,12 @@
       "require": "./lib/cjs/json-rpc/index.js",
       "types": "./lib/types/json-rpc/index.d.ts",
       "default": "./lib/esm/json-rpc/index.js"
+    },
+    "./sent-event": {
+      "import": "./lib/esm/sent-event/sent-event.js",
+      "require": "./lib/cjs/sent-event/sent-event.js",
+      "types": "./lib/types/sent-event/sent-event.d.ts",
+      "default": "./lib/esm/sent-event/sent-event.js"
     }
   },
   "devDependencies": {
