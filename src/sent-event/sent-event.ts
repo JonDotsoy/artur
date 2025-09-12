@@ -1,9 +1,10 @@
-import { customRouteSymbol } from "../http/constants/custom-options-symbol";
+import { customRouteSymbol } from "../http/constants/custom-options-symbol.js";
+import { defaultRouteArguments } from "../http/utils/parse-route-arguments.js";
 import {
   DataEventSourceEncoder,
   type DataEventSource,
-} from "../json-rpc/utils/event-source/data-event-source";
-export { type DataEventSource } from "../json-rpc/utils/event-source/data-event-source";
+} from "./event-source/data-event-source.js";
+export { type DataEventSource } from "./event-source/data-event-source.js";
 
 /**
  * Function type for creating a readable stream of Server-Sent Events.

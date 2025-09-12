@@ -29,7 +29,47 @@ const serializeData = (value: any): string => {
   return JSON.stringify(value);
 };
 
+/**
+ * Encoder for Server-Sent Events (SSE) data format.
+ *
+ * This class provides functionality to encode DataEventSource objects into the
+ * standard Server-Sent Events format as specified by the W3C EventSource specification.
+ * The encoded output follows the text/event-stream media type format.
+ *
+ * @see {@link https://html.spec.whatwg.org/multipage/server-sent-events.html Server-Sent Events specification}
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/EventSource EventSource API}
+ */
 export class DataEventSourceEncoder {
+  /**
+   * Encodes a DataEventSource payload into a Uint8Array following the SSE format.
+   *
+   * The encoding process follows the Server-Sent Events specification:
+   * - Each field (event, id, retry, data) is encoded as "field: value\n"
+   * - Data can span multiple lines, with each line prefixed by "data: "
+   * - The message ends with an additional newline character
+   * - Values containing newlines are JSON-stringified for proper escaping
+   *
+   * @param payload - The data event source object to encode
+   * @returns A Uint8Array containing the encoded SSE message in UTF-8 format
+   *
+   * @example
+   * ```typescript
+   * const encoder = new DataEventSourceEncoder();
+   * const payload = {
+   *   event: 'message',
+   *   id: '123',
+   *   data: { hello: 'world' },
+   *   retry: 5000
+   * };
+   * const encoded = encoder.encode(payload);
+   * // Results in:
+   * // event: message\n
+   * // id: 123\n
+   * // retry: 5000\n
+   * // data: {"hello":"world"}\n
+   * // \n
+   * ```
+   */
   encode(payload: DataEventSource): Uint8Array {
     let str = "";
     if (payload.event) {
