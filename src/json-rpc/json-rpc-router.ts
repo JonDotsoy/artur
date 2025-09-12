@@ -11,7 +11,7 @@ import { JsonRpcError } from "./json-rpc-error.js";
 import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
 import { type RouterOptionsDef } from "../http/types/router-options-def.js";
-import { DataEventSourceEncoder } from "../sent-event/event-source/data-event-source.js";
+import { EventEncoder } from "../event-source/event-encoder/event-encoder.js";
 import { Queue } from "@jondotsoy/utils-js/queue";
 import { bodyRequest } from "./schemas/body-request.js";
 import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-options.js";
@@ -414,7 +414,7 @@ export class JsonRpcRouter {
             for await (const ctl of session.consume(abortController.signal)) {
               const { message, ack } = ctl;
               controller.enqueue(
-                new DataEventSourceEncoder().encode({
+                new EventEncoder().encode({
                   data: JSON.stringify(message),
                 }),
               );

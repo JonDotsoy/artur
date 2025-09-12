@@ -1,10 +1,6 @@
 import { customRouteSymbol } from "../http/constants/custom-options-symbol.js";
 import { defaultRouteArguments } from "../http/utils/parse-route-arguments.js";
-import {
-  DataEventSourceEncoder,
-  type DataEventSource,
-} from "./event-source/data-event-source.js";
-export { type DataEventSource } from "./event-source/data-event-source.js";
+import { EventEncoder, type Event } from "./event-encoder/event-encoder.js";
 
 /**
  * Function type for creating a readable stream of Server-Sent Events.
@@ -12,10 +8,11 @@ export { type DataEventSource } from "./event-source/data-event-source.js";
  * @returns A promise that resolves to a ReadableStream or a ReadableStream directly
  */
 type Start = (
-  request: SentEventRequest,
+  request: EventSourceRequest,
 ) =>
-  | Promise<ReadableStream<DataEventSource> | void>
-  | ReadableStream<DataEventSource>
+  | Promise<EventsReadableStream | ReadableStream<Event> | void>
+  | EventsReadableStream
+  | ReadableStream<Event>
   | void;
 
 /**
@@ -30,7 +27,7 @@ type Options = {
  * Represents a Server-Sent Events request with client information.
  * Contains the last event ID received by the client for event stream resumption.
  */
-export class SentEventRequest {
+export class EventSourceRequest {
   #lastEventID: string | null;
 
   /**
@@ -50,12 +47,14 @@ export class SentEventRequest {
   }
 }
 
+export class EventsReadableStream extends ReadableStream<Event> {}
+
 /**
  * Server-Sent Events (SSE) stream handler that implements the EventSource protocol.
  * Provides real-time data streaming capabilities over HTTP using the text/event-stream content type.
  * Can be integrated with HTTP routers and supports custom stream creation logic.
  */
-export class SentEventStream {
+export class EventSource {
   #start?: Start;
 
   /**
@@ -72,11 +71,11 @@ export class SentEventStream {
    * @returns A promise that resolves to a ReadableStream or null if no create function is provided
    */
   create = async (
-    request: SentEventRequest,
-  ): Promise<ReadableStream<DataEventSource>> => {
+    request: EventSourceRequest,
+  ): Promise<EventsReadableStream | ReadableStream<Event>> => {
     return (
       (await this.#start?.(request)) ??
-      new ReadableStream<DataEventSource>({
+      new EventsReadableStream({
         start(controller) {
           controller.close();
         },
@@ -99,15 +98,15 @@ export class SentEventStream {
       return new Response("Not Acceptable", { status: 406 });
     }
 
-    const sentEventRequest = new SentEventRequest(lastEventID);
+    const sentEventRequest = new EventSourceRequest(lastEventID);
 
     const readable = await this.#start?.(sentEventRequest);
 
     return new Response(
       readable?.pipeThrough(
-        new TransformStream<DataEventSource, Uint8Array>({
-          transform(chunk: DataEventSource, controller) {
-            const encoder = new DataEventSourceEncoder();
+        new TransformStream<Event, Uint8Array>({
+          transform(chunk: Event, controller) {
+            const encoder = new EventEncoder();
             const data = encoder.encode(chunk);
             controller.enqueue(data);
           },

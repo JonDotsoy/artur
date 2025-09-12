@@ -1,10 +1,10 @@
 import { describe, test, expect } from "bun:test";
-import { SentEventRequest, SentEventStream } from "./sent-event";
+import { EventSourceRequest, EventSource } from "./event-source";
 import { Router } from "../http";
 
 describe("SentEvent", () => {
   test("should return 406 Not Acceptable when request doesn't accept text/event-stream", async () => {
-    const stream = new SentEventStream();
+    const stream = new EventSource();
 
     const response = await stream.fetch(
       new Request("http://localhost", {
@@ -18,7 +18,7 @@ describe("SentEvent", () => {
   });
 
   test("should stream data successfully when accept header is text/event-stream", async () => {
-    const stream = new SentEventStream({
+    const stream = new EventSource({
       async start(request) {
         return new ReadableStream({
           start(controller) {
@@ -46,7 +46,7 @@ describe("SentEvent", () => {
   });
 
   test("should automatically close stream and return complete response text", async () => {
-    const stream = new SentEventStream({
+    const stream = new EventSource({
       async start(request) {
         return new ReadableStream({
           start(controller) {
@@ -74,7 +74,7 @@ describe("SentEvent", () => {
 
     router.route(
       "/sse",
-      new SentEventStream({
+      new EventSource({
         async start(request) {
           return new ReadableStream({
             start(controller) {
@@ -99,7 +99,7 @@ describe("SentEvent", () => {
   });
 
   test("should properly handle stream cancellation and cleanup timeouts", async () => {
-    const stream = new SentEventStream({
+    const stream = new EventSource({
       async start(request) {
         let timeout: any;
         return new ReadableStream({
@@ -137,9 +137,11 @@ describe("SentEvent", () => {
   });
 
   test("should return null when no create function is provided", async () => {
-    const stream = new SentEventStream();
+    const stream = new EventSource();
 
-    const readable = await stream.create(new SentEventRequest("last-event-id"));
+    const readable = await stream.create(
+      new EventSourceRequest("last-event-id"),
+    );
 
     expect(readable).not.toBeNull();
 
@@ -148,7 +150,7 @@ describe("SentEvent", () => {
   });
 
   test("should create readable stream when create function is provided", async () => {
-    const stream = new SentEventStream({
+    const stream = new EventSource({
       start: () =>
         new ReadableStream({
           start(controller) {
@@ -158,7 +160,9 @@ describe("SentEvent", () => {
         }),
     });
 
-    const readable = await stream.create(new SentEventRequest("last-event-id"));
+    const readable = await stream.create(
+      new EventSourceRequest("last-event-id"),
+    );
 
     expect(readable).toBeInstanceOf(ReadableStream);
 

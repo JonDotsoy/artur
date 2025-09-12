@@ -1,4 +1,4 @@
-export interface DataEventSource {
+export interface Event {
   /**
    * The event ID to set the {@link https://developer.mozilla.org/en-US/docs/Web/API/EventSource} object's last event ID value.
    */
@@ -39,7 +39,7 @@ const serializeData = (value: any): string => {
  * @see {@link https://html.spec.whatwg.org/multipage/server-sent-events.html Server-Sent Events specification}
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/EventSource EventSource API}
  */
-export class DataEventSourceEncoder {
+export class EventEncoder {
   /**
    * Encodes a DataEventSource payload into a Uint8Array following the SSE format.
    *
@@ -70,7 +70,7 @@ export class DataEventSourceEncoder {
    * // \n
    * ```
    */
-  encode(payload: DataEventSource): Uint8Array {
+  encode(payload: Event): Uint8Array {
     let str = "";
     if (payload.event) {
       str += `event: ${normalizeValue(payload.event)}\n`;
