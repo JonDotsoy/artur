@@ -75,6 +75,16 @@ export class EventsReadableStream extends ReadableStream<Event> {
     }
     return result;
   }
+
+  static from(
+    iterable: null | EventsReadableStream | ReadableStream<Event>,
+  ): EventsReadableStream | null {
+    if (iterable === null) return null;
+    if (iterable instanceof EventsReadableStream) {
+      return iterable;
+    }
+    return new EventsReadableStream(iterable);
+  }
 }
 
 /**
@@ -102,7 +112,7 @@ export class EventSource {
     request: EventSourceRequest,
   ): Promise<EventsReadableStream> => {
     return (
-      (await this.#start?.(request)) ??
+      EventsReadableStream.from((await this.#start?.(request)) ?? null) ??
       new EventsReadableStream({
         start(controller) {
           controller.close();
