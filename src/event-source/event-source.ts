@@ -130,7 +130,12 @@ export class EventSource {
    */
   [customRouteSymbol] = defaultRouteArguments({
     method: "GET",
-    test: () => true,
+    test: (request) => {
+      const accept = request.headers.get("accept");
+      const matchContentType = accept?.includes("text/event-stream") ?? false;
+
+      return matchContentType;
+    },
     fetch: this.fetch,
   });
 }
