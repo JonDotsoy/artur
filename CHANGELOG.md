@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.3](https://github.com/JonDotsoy/artur/compare/artur-v1.8.2...artur-v1.8.3) (2025-09-12)
+
+
+### Features
+
+* add JsonRpcNotification type and update related handlers ([cdb22f4](https://github.com/JonDotsoy/artur/commit/cdb22f4c83c531ecf4ee2a8ae1ed57d227e8e2eb))
+
+
+### Miscellaneous Chores
+
+* release 1.8.3 ([e289e20](https://github.com/JonDotsoy/artur/commit/e289e201c1b3c411c9ed67d09ba04a26b355b911))
+
 ## [1.8.2](https://github.com/JonDotsoy/artur/compare/artur-v1.8.1...artur-v1.8.2) (2025-09-07)
 
 
