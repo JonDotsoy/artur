@@ -44,6 +44,12 @@
       "require": "./lib/cjs/json-rpc/index.js",
       "types": "./lib/types/json-rpc/index.d.ts",
       "default": "./lib/esm/json-rpc/index.js"
+    },
+    "./event-source": {
+      "import": "./lib/esm/event-source/event-source.js",
+      "require": "./lib/cjs/event-source/event-source.js",
+      "types": "./lib/types/event-source/event-source.d.ts",
+      "default": "./lib/esm/event-source/event-source.js"
     }
   },
   "devDependencies": {

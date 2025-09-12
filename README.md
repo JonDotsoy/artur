@@ -7,6 +7,7 @@ Artur is a lightweight web framework for building HTTP services with minimal set
 - Declarative router built on top of the URLPattern API
 - Middleware support for request and response processing
 - **JSON-RPC 2.0 protocol support** with request dispatching
+- **Server-Sent Events (SSE) support** for real-time data streaming
 - Works with Node.js and Bun
 - Helpers for error handling and CORS
 - Fully typed when used with TypeScript
@@ -250,6 +251,430 @@ const router = new Router({
 router.route("OPTIONS", "/hello", () => new Response(null, { status: 204 }));
 router.route("GET", "/hello", async () => new Response("Hello with CORS"));
 ```
+
+## Server-Sent Events (SSE) Support
+
+Artur provides built-in support for Server-Sent Events (SSE) to enable real-time data streaming from server to client. The `EventSource` class implements the EventSource protocol and integrates seamlessly with the router.
+
+### Features
+
+- ✅ **EventSource Protocol Compliance**: Full implementation of the Server-Sent Events specification
+- ✅ **HTTP Router Integration**: Seamless integration using `Router.customRoute` symbol
+- ✅ **Stream Resumption**: Support for `Last-Event-ID` header for reliable event delivery
+- ✅ **Async Iteration**: Built-in async iterable support for processing events
+- ✅ **Error Handling**: Comprehensive error handling with proper HTTP status codes
+- ✅ **Stream Cancellation**: Proper resource cleanup and cancellation support
+- ✅ **Empty Stream Handling**: Graceful handling of empty streams
+- ✅ **Type Safety**: Full TypeScript support with proper event typing
+- ✅ **Automatic Encoding**: Built-in event encoding following SSE specification
+
+### Basic SSE Setup
+
+```ts
+import { EventSource, EventsReadableStream, Router } from "artur";
+
+const eventStream = new EventSource({
+  start: async (request) => {
+    return new EventsReadableStream({
+      start(controller) {
+        // Send initial connection event
+        controller.enqueue({
+          data: "Connection established",
+          event: "connected",
+        });
+
+        // Send periodic updates
+        const interval = setInterval(() => {
+          controller.enqueue({
+            id: Date.now().toString(),
+            data: JSON.stringify({
+              timestamp: new Date().toISOString(),
+              message: "Periodic update",
+            }),
+            event: "update",
+          });
+        }, 1000);
+
+        // Important: Cleanup resources when stream is cancelled
+      },
+      cancel() {
+        // Proper cleanup when stream is cancelled
+        clearInterval(interval);
+        console.log("Stream cancelled and cleaned up");
+      },
+    });
+  },
+});
+
+// Integrate with Router
+const router = new Router();
+router.route("GET", "/events", eventStream);
+
+// Alternative: Using the flexible route patterns
+router.route("/events", eventStream); // Automatically handles GET requests for SSE
+```
+
+### Client-Side Usage
+
+```javascript
+// Connect to the event stream
+const eventSource = new EventSource("/events");
+
+// Handle different event types
+eventSource.addEventListener("connected", (event) => {
+  console.log("Connected:", event.data);
+});
+
+eventSource.addEventListener("update", (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Update received:", data);
+});
+
+// Handle all messages
+eventSource.onmessage = (event) => {
+  console.log("Message:", event.data);
+};
+
+// Handle errors
+eventSource.onerror = (event) => {
+  console.error("SSE error:", event);
+};
+
+// Close connection when done
+eventSource.close();
+```
+
+### Stream Resumption with Last-Event-ID
+
+SSE supports automatic stream resumption using the `Last-Event-ID` header:
+
+```ts
+const eventStream = new EventSource({
+  start: async (request) => {
+    // Get the last event ID from client for resumption
+    const lastEventId = request.lastEventID;
+    const startId = lastEventId ? parseInt(lastEventId) + 1 : 1;
+
+    return new EventsReadableStream({
+      start(controller) {
+        let eventId = startId;
+
+        const sendEvent = () => {
+          controller.enqueue({
+            id: eventId.toString(),
+            data: `Event number ${eventId}`,
+            event: "numbered-event",
+          });
+          eventId++;
+        };
+
+        // Send events every 2 seconds
+        const interval = setInterval(sendEvent, 2000);
+
+        // Send initial event
+        sendEvent();
+      },
+      cancel() {
+        clearInterval(interval);
+      },
+    });
+  },
+});
+```
+
+### Async Iteration Support
+
+The `EventsReadableStream` provides built-in async iteration capabilities:
+
+```ts
+const eventStream = new EventSource({
+  start: () =>
+    new EventsReadableStream({
+      start(controller) {
+        controller.enqueue({ id: "1", data: "First event" });
+        controller.enqueue({ id: "2", data: "Second event" });
+        controller.close();
+      },
+    }),
+});
+
+// Create the stream
+const readable = await eventStream.create(new EventSourceRequest(null));
+
+// Process events using async iteration
+for await (const event of readable.iterable()) {
+  console.log(`Event ${event.id}: ${event.data}`);
+}
+// Output:
+// Event 1: First event
+// Event 2: Second event
+
+// Or collect all events into an array
+const events = await readable.toArray();
+console.log(events); // [{ id: "1", data: "First event" }, ...]
+```
+
+### Empty Stream Handling
+
+EventSource gracefully handles empty streams and missing start functions:
+
+```ts
+// EventSource without start function
+const emptyStream = new EventSource();
+const readable = await emptyStream.create(new EventSourceRequest(null));
+const events = await readable.toArray();
+console.log(events); // [] (empty array)
+
+// EventSource with start function that returns nothing
+const voidStream = new EventSource({
+  start: () => {}, // Returns undefined
+});
+const readable2 = await voidStream.create(new EventSourceRequest(null));
+const events2 = await readable2.toArray();
+console.log(events2); // [] (empty array)
+```
+
+### Real-time Notifications Example
+
+```ts
+import { EventSource, Router } from "artur";
+
+// Simple notification system
+const notifications = new EventSource({
+  start: async (request) => {
+    return new EventsReadableStream({
+      start(controller) {
+        // Send welcome message
+        controller.enqueue({
+          id: "welcome",
+          event: "notification",
+          data: JSON.stringify({
+            type: "info",
+            message: "Welcome to the notification system!",
+          }),
+        });
+
+        // Simulate notifications
+        const notifications = [
+          { type: "success", message: "Task completed successfully" },
+          { type: "warning", message: "System maintenance scheduled" },
+          { type: "error", message: "Connection issue detected" },
+        ];
+
+        let index = 0;
+        const interval = setInterval(() => {
+          if (index < notifications.length) {
+            controller.enqueue({
+              id: `notification-${index}`,
+              event: "notification",
+              data: JSON.stringify(notifications[index]),
+              retry: 3000, // Retry connection after 3 seconds if dropped
+            });
+            index++;
+          } else {
+            controller.close();
+          }
+        }, 5000);
+
+        // Note: Cleanup should be handled when the stream is closed or cancelled
+      },
+    });
+  },
+});
+
+const router = new Router();
+router.route("/notifications", notifications);
+```
+
+### Proper Resource Management
+
+```ts
+const eventStream = new EventSource({
+  start: async (request) => {
+    return new EventsReadableStream({
+      start(controller) {
+        let interval: NodeJS.Timeout;
+        let isActive = true;
+
+        const sendUpdate = () => {
+          if (!isActive) return;
+
+          controller.enqueue({
+            id: Date.now().toString(),
+            data: JSON.stringify({
+              timestamp: new Date().toISOString(),
+              message: "Periodic update",
+            }),
+            event: "update",
+          });
+        };
+
+        // Start sending updates
+        interval = setInterval(sendUpdate, 1000);
+      },
+      cancel() {
+        // Cleanup is handled in the cancel method
+        isActive = false;
+        if (interval) {
+          clearInterval(interval);
+        }
+        console.log("Stream cleanup completed");
+      },
+    });
+  },
+});
+
+// Test stream cancellation
+const response = await eventStream.fetch(request);
+const reader = response.body!.getReader();
+
+// This will trigger the cancel method for cleanup
+reader.cancel();
+```
+
+### Error Handling in SSE
+
+EventSource provides comprehensive error handling for different failure scenarios:
+
+```ts
+// Start function errors during HTTP requests return 500 status
+const errorStream = new EventSource({
+  start: () => {
+    throw new Error("Configuration error");
+  },
+});
+
+const response = await errorStream.fetch(
+  new Request("http://localhost/events", {
+    headers: { accept: "text/event-stream" },
+  }),
+);
+console.log(response.status); // 500
+
+// Stream runtime errors
+const runtimeErrorStream = new EventSource({
+  start: () =>
+    new EventsReadableStream({
+      start(controller) {
+        // HTTP response will be 200, but stream will emit error
+        controller.error(new Error("Stream runtime error"));
+      },
+    }),
+});
+
+const response2 = await runtimeErrorStream.fetch(request);
+console.log(response2.status); // 200
+try {
+  await response2.text(); // This will throw
+} catch (error) {
+  console.error("Stream error:", error.message);
+}
+
+// Graceful error handling in start function
+const gracefulStream = new EventSource({
+  start: async (request) => {
+    try {
+      const data = await fetchExternalData();
+      return new EventsReadableStream({
+        start(controller) {
+          controller.enqueue({ event: "data", data: JSON.stringify(data) });
+          controller.close();
+        },
+      });
+    } catch (error) {
+      return new EventsReadableStream({
+        start(controller) {
+          controller.enqueue({
+            event: "error",
+            data: JSON.stringify({
+              error: error.message,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          controller.close();
+        },
+      });
+    }
+  },
+});
+```
+
+### SSE Features
+
+- **EventSource Protocol Compliance**: Full implementation of the Server-Sent Events specification
+- **Automatic Header Management**: Sets proper `Content-Type`, `Cache-Control`, and `Connection` headers
+- **Stream Resumption**: Supports `Last-Event-ID` for reliable event delivery
+- **Router Integration**: Uses `Router.customRoute` for seamless integration
+- **Type Safety**: Full TypeScript support with proper event typing
+- **Error Handling**: Built-in error handling with proper HTTP status codes (406, 500)
+- **Custom Event Types**: Support for named events and structured data
+- **Async Iteration**: Built-in `iterable()` and `toArray()` methods for stream processing
+- **Stream Cancellation**: Proper resource cleanup through cancel methods
+- **Empty Stream Support**: Graceful handling of empty streams and undefined start functions
+- **Accept Header Validation**: Automatic validation of `text/event-stream` accept header
+
+### Event Structure
+
+SSE events support the following properties based on the W3C specification:
+
+```ts
+interface Event {
+  /** The event ID for stream resumption */
+  id?: number | string;
+  /** The event type name */
+  event?: string;
+  /** The event data (automatically JSON stringified if object) */
+  data: any;
+  /** Reconnection delay in milliseconds */
+  retry?: number;
+}
+```
+
+### EventsReadableStream API
+
+The `EventsReadableStream` extends the standard `ReadableStream` with additional methods:
+
+```ts
+class EventsReadableStream extends ReadableStream<Event> {
+  // Async iteration support
+  iterable(): AsyncIterable<Event>;
+
+  // Collect all events into an array
+  toArray(): Promise<Event[]>;
+}
+```
+
+### HTTP Status Codes
+
+- **200 OK**: Successful SSE stream response
+- **406 Not Acceptable**: Client doesn't accept `text/event-stream`
+- **500 Internal Server Error**: Start function throws an error
+
+### Testing Support
+
+EventSource includes comprehensive test coverage for:
+
+- ✅ Basic SSE streaming functionality
+- ✅ HTTP router integration
+- ✅ Stream iteration and async processing
+- ✅ Error handling at different levels (start function, stream runtime)
+- ✅ Stream cancellation and cleanup
+- ✅ Empty stream scenarios
+- ✅ Accept header validation
+- ✅ Proper HTTP status code responses
+
+### Best Practices
+
+- **Use event IDs**: Always provide event IDs for reliable stream resumption
+- **Handle connection cleanup**: Implement proper cleanup through the ReadableStream's cancel method
+- **Implement heartbeats**: Send periodic keepalive events for long-lived connections
+- **Error recovery**: Use the `retry` field to control client reconnection behavior
+- **Structured data**: Use JSON for complex data structures in the `data` field
+- **Resource management**: Clear intervals and cleanup resources in the cancel method
+- **Test thoroughly**: Ensure your implementation handles empty streams, errors, and cancellation
+- **Accept header validation**: Let EventSource automatically handle Accept header validation
+- **Graceful error handling**: Handle start function errors to avoid 500 responses
+- **Async iteration**: Use `iterable()` method for processing events with async loops
 
 ## Router.customRoute Integration
 
@@ -948,6 +1373,24 @@ import {
   type Validation,
   type ExtractValidationType,
 } from "artur/json-rpc";
+```
+
+### EventSource Exports
+
+For Server-Sent Events functionality, Artur exports the following classes and types:
+
+```ts
+// Main EventSource class available from "artur"
+import { EventSource } from "artur";
+
+// For additional SSE types and utilities, import directly from event-source module
+import {
+  EventSourceRequest,
+  EventsReadableStream,
+  type Event,
+  type Start,
+  type Options,
+} from "artur/event-source";
 ```
 
 #### Type Definitions

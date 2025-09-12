@@ -9,3 +9,8 @@ export {
   type JsonRpcErrorResponse,
   type JsonRpcResultResponse,
 } from "./json-rpc/json-rpc-router.js";
+export {
+  EventSource,
+  EventSourceRequest,
+  EventsReadableStream,
+} from "./event-source/event-source.js";

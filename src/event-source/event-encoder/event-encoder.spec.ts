@@ -1,8 +1,5 @@
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
-import {
-  DataEventSourceEncoder,
-  type DataEventSource,
-} from "./data-event-source.js";
+import { EventEncoder, type Event } from "./event-encoder.js";
 import { serve, type Server } from "bun";
 import { EventSourcePolyfill } from "event-source-polyfill";
 
@@ -11,7 +8,7 @@ const EventSource = EventSourcePolyfill;
 
 describe("DataEventSourceEncoder", () => {
   test("should create basic data event with only data field", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: "Hello World",
     });
@@ -20,7 +17,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should create event with all fields", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       id: 123,
       event: "message",
@@ -34,7 +31,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle multiline data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: "Line 1\nLine 2\nLine 3",
     });
@@ -45,7 +42,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should normalize numeric values to strings", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       id: 42,
       event: "message",
@@ -59,7 +56,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should JSON stringify values with newlines", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       event: "test\nwith\nnewlines",
       data: "simple data",
@@ -71,7 +68,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle empty data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: "",
     });
@@ -80,7 +77,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle string ID", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       id: "unique-id-123",
       data: "test",
@@ -92,7 +89,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should omit optional fields when not provided", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: "only data field",
     });
@@ -105,7 +102,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle zero as retry value", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: "test",
       retry: 0,
@@ -116,7 +113,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle zero as ID", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       id: 0,
       data: "test",
@@ -127,7 +124,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle non-string data by serializing to JSON", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: { message: "hello", count: 42 },
     });
@@ -138,7 +135,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle numeric data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: 12345,
     });
@@ -147,7 +144,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle array data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: [1, 2, 3],
     });
@@ -156,7 +153,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle boolean data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: true,
     });
@@ -165,7 +162,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle null data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: null,
     });
@@ -174,13 +171,13 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should create encoder instance", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     expect(encoder).toBeDefined();
     expect(typeof encoder.encode).toBe("function");
   });
 
   test("should handle empty string ID", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       id: "",
       data: "test",
@@ -191,7 +188,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle empty string event", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       event: "",
       data: "test",
@@ -202,7 +199,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle undefined data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     // undefined data will cause an error in the current implementation
     // since JSON.stringify(undefined) returns undefined, not a string
     expect(() => {
@@ -213,7 +210,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle complex object data", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const complexObject = {
       nested: {
         array: [1, 2, { deep: "value" }],
@@ -231,7 +228,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle data with special characters", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       data: "Special chars: àáâãäåæçèéêë ñóôõö ♠♣♥♦",
     });
@@ -242,7 +239,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle event field with special characters", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       event: "event-with-émojis-🎉",
       data: "test",
@@ -254,7 +251,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle very long ID", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const longId = "a".repeat(1000);
     const result = encoder.encode({
       id: longId,
@@ -267,7 +264,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle negative numeric ID", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       id: -123,
       data: "test",
@@ -277,7 +274,7 @@ describe("DataEventSourceEncoder", () => {
   });
 
   test("should handle floating point retry value", () => {
-    const encoder = new DataEventSourceEncoder();
+    const encoder = new EventEncoder();
     const result = encoder.encode({
       retry: 1500.5,
       data: "test",
@@ -291,8 +288,8 @@ describe("DataEventSourceEncoder", () => {
 
 describe("DataEventSource integration tests", () => {
   let server: Server;
-  let subscribers: Set<(data: DataEventSource) => void>;
-  const publish = (data: DataEventSource) => {
+  let subscribers: Set<(data: Event) => void>;
+  const publish = (data: Event) => {
     for (const sub of subscribers) {
       sub(data);
     }
@@ -308,13 +305,13 @@ describe("DataEventSource integration tests", () => {
         const reader = new ReadableStream({
           start(controller) {
             controller.enqueue(
-              new DataEventSourceEncoder().encode({
+              new EventEncoder().encode({
                 event: "keep-alive",
                 data: new Date(),
               }),
             );
             subscribers.add((data) => {
-              controller.enqueue(new DataEventSourceEncoder().encode(data));
+              controller.enqueue(new EventEncoder().encode(data));
             });
           },
         });
