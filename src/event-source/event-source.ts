@@ -2,6 +2,14 @@ import { customRouteSymbol } from "../http/constants/custom-options-symbol.js";
 import { defaultRouteArguments } from "../http/utils/parse-route-arguments.js";
 import { EventEncoder, type Event } from "./event-encoder/event-encoder.js";
 
+const t = async <T>(promise: () => Promise<T>) => {
+  try {
+    return [null, await promise()] as const;
+  } catch (error) {
+    return [error, null] as const;
+  }
+};
+
 /**
  * Function type for creating a readable stream of Server-Sent Events.
  * @param request - The sent event request containing client information
@@ -47,7 +55,27 @@ export class EventSourceRequest {
   }
 }
 
-export class EventsReadableStream extends ReadableStream<Event> {}
+export class EventsReadableStream extends ReadableStream<Event> {
+  async *iterable(): AsyncIterable<Event> {
+    const reader = this.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  async toArray(): Promise<Event[]> {
+    const result: Event[] = [];
+    for await (const chunk of this.iterable()) {
+      result.push(chunk);
+    }
+    return result;
+  }
+}
 
 /**
  * Server-Sent Events (SSE) stream handler that implements the EventSource protocol.
@@ -72,7 +100,7 @@ export class EventSource {
    */
   create = async (
     request: EventSourceRequest,
-  ): Promise<EventsReadableStream | ReadableStream<Event>> => {
+  ): Promise<EventsReadableStream> => {
     return (
       (await this.#start?.(request)) ??
       new EventsReadableStream({
@@ -100,7 +128,14 @@ export class EventSource {
 
     const sentEventRequest = new EventSourceRequest(lastEventID);
 
-    const readable = await this.#start?.(sentEventRequest);
+    const [error, readable] = await t(async () =>
+      this.#start?.(sentEventRequest),
+    );
+
+    if (error) {
+      console.error("Error creating event stream:", error);
+      return new Response("Internal Server Error", { status: 500 });
+    }
 
     return new Response(
       readable?.pipeThrough(
@@ -111,7 +146,7 @@ export class EventSource {
             controller.enqueue(data);
           },
         }),
-      ),
+      ) ?? null,
       {
         headers: {
           "Content-Type": "text/event-stream",
