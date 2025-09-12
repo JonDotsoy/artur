@@ -21,11 +21,125 @@ type HiddenOptions<T> = {
   [customRouteSymbol]?: T;
 } & T;
 
+/**
+ * Configuration object that defines the parameters for creating HTTP routes.
+ * This type represents the normalized structure of route arguments after parsing
+ * various input formats through the `parseRouteArguments` function.
+ *
+ * @example
+ * ```typescript
+ * // Example with URL pattern and HTTP method
+ * const args: RouteArguments = {
+ *   method: "POST",
+ *   urlPattern: "/api/users/:id",
+ *   fetch: async (req) => new Response("Hello"),
+ *   middlewares: [authMiddleware, loggingMiddleware]
+ * };
+ *
+ * // Example with custom test function
+ * const customArgs: RouteArguments = {
+ *   test: (req) => req.headers.get('content-type') === 'application/json',
+ *   fetch: async (req) => new Response("JSON endpoint"),
+ *   middlewares: [jsonValidationMiddleware]
+ * };
+ * ```
+ */
 export type RouteArguments = {
+  /**
+   * Custom test function to determine if a route matches an incoming request.
+   * When provided, this takes precedence over `urlPattern` and `method` for route matching.
+   * The function receives a Request object and should return a boolean indicating
+   * whether this route should handle the request.
+   *
+   * @param request - The incoming HTTP request to test
+   * @returns True if this route should handle the request, false otherwise
+   *
+   * @example
+   * ```typescript
+   * const jsonOnlyTest: TestRoute = (req) =>
+   *   req.headers.get('content-type')?.includes('application/json') ?? false;
+   * ```
+   */
   test?: TestRoute;
+
+  /**
+   * The HTTP method that this route should respond to.
+   * If not specified, the route will typically default to handling GET requests.
+   * Use "ALL" to match any HTTP method.
+   *
+   * @example
+   * ```typescript
+   * method: "POST"     // Only handle POST requests
+   * method: "GET"      // Only handle GET requests
+   * method: "ALL"      // Handle any HTTP method
+   * ```
+   */
   method?: HTTPMethod;
+
+  /**
+   * URL pattern for matching incoming requests. Can be either a string pattern
+   * or a URLPattern instance for more advanced pattern matching.
+   *
+   * String patterns support parameter placeholders (e.g., `:id`, `:userId`)
+   * and wildcard matching. URLPattern instances provide more sophisticated
+   * matching capabilities including regex patterns.
+   *
+   * @example
+   * ```typescript
+   * urlPattern: "/api/users/:id"           // String with parameter
+   * urlPattern: "/api/users/*"             // String with wildcard
+   * urlPattern: new URLPattern({           // URLPattern instance
+   *   pathname: "/api/users/:id(\\d+)"
+   * })
+   * ```
+   */
   urlPattern?: string | URLPattern;
+
+  /**
+   * The fetch handler function that processes matching requests.
+   * This function receives the matched request and should return a Response
+   * or a Promise that resolves to a Response.
+   *
+   * The handler has access to URL parameters, query strings, and request body
+   * through the Request object and any middleware-provided context.
+   *
+   * @param request - The HTTP request to handle
+   * @returns A Response object or Promise resolving to a Response
+   *
+   * @example
+   * ```typescript
+   * fetch: async (req) => {
+   *   const body = await req.json();
+   *   return new Response(JSON.stringify({ success: true }), {
+   *     headers: { 'Content-Type': 'application/json' }
+   *   });
+   * }
+   * ```
+   */
   fetch?: Fetch;
+
+  /**
+   * Array of middleware functions to be executed before the main fetch handler.
+   * Middlewares are executed in the order they appear in the array and can:
+   * - Modify the request
+   * - Add authentication/authorization
+   * - Perform logging
+   * - Handle CORS
+   * - Validate input
+   * - Short-circuit the request by returning early
+   *
+   * Each middleware receives the request and can either pass it to the next
+   * middleware/handler or return a response to end the chain.
+   *
+   * @example
+   * ```typescript
+   * middlewares: [
+   *   authMiddleware,        // Check authentication
+   *   corsMiddleware,        // Handle CORS headers
+   *   validationMiddleware   // Validate request data
+   * ]
+   * ```
+   */
   middlewares?: Middleware[];
 };
 
