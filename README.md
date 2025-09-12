@@ -81,19 +81,74 @@ server.listen(3000, "127.0.0.1", () => {
 
 ## Router API
 
-Register a new route using `router.route(method, path, options)`.
+Register a new route using the flexible `router.route()` method. This method supports multiple patterns for maximum flexibility:
+
+### Basic Route Registration
 
 ```ts
+// Traditional method, path, and options object
 router.route("GET", "/hello", {
   fetch: () => new Response("ok"),
 });
+
+// Method, path, and inline fetch handler
+router.route("POST", "/api/users", async (request) => {
+  return new Response("User created", { status: 201 });
+});
+
+// Path and fetch handler (defaults to GET)
+router.route("/hello", async () => new Response("Hello world"));
+
+// Using options object only
+router.route({
+  method: "PUT",
+  urlPattern: "/api/users/:id",
+  fetch: async (request) => new Response("User updated"),
+  middlewares: [authMiddleware],
+});
 ```
 
-The path accepts a string or a `URLPattern` instance and an optional `test` function for extra conditions.
+### Advanced Route Patterns
+
+```ts
+// Custom test function for complex routing logic
+router.route(
+  (request) => request.headers.get("content-type") === "application/json",
+  async (request) => new Response("JSON handler"),
+  { middlewares: [jsonMiddleware] },
+);
+
+// URLPattern instance for advanced pattern matching
+router.route("GET", new URLPattern({ pathname: "/users/:id(\\d+)" }), {
+  fetch: async (request) => new Response("User by ID"),
+});
+```
+
+### Router.customRoute Integration
+
+For advanced integrations, you can use `Router.customRoute` to create objects that work seamlessly with the router:
+
+```ts
+// Custom objects implementing Router.customRoute
+const customHandler = {
+  [Router.customRoute]: {
+    fetch: async (request) => new Response("Custom handler"),
+    method: "POST",
+    middlewares: [authMiddleware],
+  },
+};
+
+// Register the custom handler directly
+router.route("/api/custom", customHandler);
+```
+
+The path accepts a string or a `URLPattern` instance and supports optional `test` functions for extra conditions.
 
 ## Middleware
 
-Middleware wraps a fetch handler so you can modify the request or response.
+Middleware wraps a fetch handler so you can modify the request or response. The router supports multiple ways to specify middleware:
+
+### Using Route Options Object
 
 ```ts
 router.route("GET", "/hello", {
@@ -105,6 +160,32 @@ router.route("GET", "/hello", {
   ],
   fetch: () => new Response("ok"),
 });
+```
+
+### Using Inline Parameters
+
+```ts
+router.route(
+  "POST",
+  "/api/users",
+  async (request) => {
+    return new Response("User created");
+  },
+  {
+    middlewares: [authMiddleware, validationMiddleware],
+  },
+);
+```
+
+### Global Middleware
+
+```ts
+const router = new Router({
+  middlewares: [corsMiddleware, loggingMiddleware],
+});
+
+// All routes will use the global middleware
+router.route("GET", "/hello", async () => new Response("Hello"));
 ```
 
 ## Error Handling
@@ -124,33 +205,114 @@ try {
 
 ## Cross-Origin Resource Sharing (CORS)
 
-Use the `cors()` middleware to enable CORS.
+Use the `cors()` middleware to enable CORS. You can apply it globally or per route:
+
+### Global CORS
 
 ```ts
 import { cors, Router } from "artur";
 
 const router = new Router({ middlewares: [cors()] });
 
-router.route("OPTIONS", "/hello", {
-  fetch: () => new Response(null, { status: 204 }),
+// CORS will be applied to all routes
+router.route("GET", "/api/data", async () => Response.json({ data: "value" }));
+router.route("OPTIONS", "/api/data", () => new Response(null, { status: 204 }));
+```
+
+### Per-Route CORS
+
+```ts
+router.route(
+  "GET",
+  "/api/public",
+  async () => Response.json({ public: true }),
+  {
+    middlewares: [cors()],
+  },
+);
+
+// Alternative using options object
+router.route({
+  method: "POST",
+  urlPattern: "/api/upload",
+  fetch: async (request) => Response.json({ uploaded: true }),
+  middlewares: [cors({ origin: "https://example.com" })],
 });
 ```
 
-Specify an origin if needed:
+### CORS with Specific Origins
 
 ```ts
 const router = new Router({
   middlewares: [cors({ origin: "https://example.com" })],
 });
 
-router.route("OPTIONS", "/hello", {
-  fetch: () => new Response(null, { status: 204 }),
-});
+router.route("OPTIONS", "/hello", () => new Response(null, { status: 204 }));
+router.route("GET", "/hello", async () => new Response("Hello with CORS"));
 ```
+
+## Router.customRoute Integration
+
+The `Router.customRoute` symbol enables seamless integration between custom objects and the router system. This is particularly useful for building reusable components that can be registered as routes.
+
+### Basic Usage
+
+```ts
+import { Router } from "artur";
+
+// Create a custom object with Router.customRoute
+const apiHandler = {
+  [Router.customRoute]: {
+    fetch: async (request) => {
+      return new Response("API response");
+    },
+    method: "POST",
+    middlewares: [authMiddleware],
+  },
+};
+
+// Register it directly with the router
+const router = new Router();
+router.route("/api/endpoint", apiHandler);
+```
+
+### Advanced Custom Route Objects
+
+```ts
+class CustomService {
+  constructor(private config: any) {}
+
+  [Router.customRoute] = {
+    fetch: async (request: Request) => {
+      // Access instance methods and properties
+      return this.handleRequest(request);
+    },
+    middlewares: [this.authMiddleware.bind(this)],
+  };
+
+  private async handleRequest(request: Request) {
+    // Custom logic here
+    return new Response("Service response");
+  }
+
+  private authMiddleware = (fetch: Fetch) => async (request: Request) => {
+    // Custom authentication logic
+    return fetch(request);
+  };
+}
+
+// Use the custom service
+const service = new CustomService({ apiKey: "secret" });
+router.route("*", "/api/service", service);
+```
+
+This pattern is used internally by Artur's `JsonRpcDispatcher` and other built-in components to provide seamless integration with the routing system.
 
 ## JSON-RPC 2.0 Support
 
 Artur includes built-in support for JSON-RPC 2.0 protocol with the `JsonRpcDispatcher` class. This enables you to build real-time applications with remote procedure calls, session management, and Server-Sent Events (SSE) streaming.
+
+> **Note**: `JsonRpcDispatcher` is an alias for `JsonRpcRouter`. Both class names are interchangeable and provide the same functionality.
 
 ### Basic JSON-RPC Setup
 
@@ -171,6 +333,13 @@ rpc.method("greet", (params: { name: string }) => {
 // Integrate with Router
 const router = new Router();
 router.route("POST", "/api/rpc", rpc);
+
+// Alternative: Use the flexible route patterns
+router.route("/api/rpc", rpc); // Supports all HTTP methods by default
+
+// The JsonRpcDispatcher uses Router.customRoute internally for seamless integration
+// You can access the underlying fetch handler if needed:
+// const fetchHandler = rpc[Router.customRoute].fetch;
 ```
 
 ### Input and Output Validation
@@ -358,7 +527,7 @@ const rpc = new JsonRpcDispatcher({
 
 ### Method Registration API
 
-The `method()` function is the primary way to register JSON-RPC method handlers. It supports optional validation and provides better TypeScript integration than the legacy `use()` method.
+The `method()` function is the primary way to register JSON-RPC method handlers with optional validation and excellent TypeScript integration.
 
 #### Basic Method Registration
 
@@ -717,6 +886,9 @@ rpc.enableMethodListing("system.listMethods");
 // Set up the router
 const router = new Router();
 router.route("*", "/api/chat", rpc);
+
+// Alternative: Using the flexible route() method
+router.route("/api/chat", rpc); // Automatically handles all HTTP methods
 
 // Client usage:
 // 1. Connect: GET /api/chat?json_rpc_token=user123
