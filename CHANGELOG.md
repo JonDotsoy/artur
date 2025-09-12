@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/JonDotsoy/artur/compare/artur-v1.9.0...artur-v1.9.1) (2025-09-12)
+
+
+### Bug Fixes
+
+* add static from method to EventsReadableStream for improved stream creation ([fd992ff](https://github.com/JonDotsoy/artur/commit/fd992ffb394960213f8dd6031a40954f330bc345))
+
 ## [1.9.0](https://github.com/JonDotsoy/artur/compare/artur-v1.8.3...artur-v1.9.0) (2025-09-12)
 
 
