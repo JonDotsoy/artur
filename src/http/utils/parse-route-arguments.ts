@@ -1,322 +1,385 @@
 import { URLPattern } from "urlpattern-polyfill";
-import { urlPatternFrom } from "./url-pattern-from.js";
 import type { Fetch } from "../types/fetch-type.js";
-import { ArgumentsError } from "../errors/arguments-error.js";
-import { z } from "zod";
-import { Route } from "../route.js";
 import type { Middleware } from "../types/middleware.js";
-import { RequestReflect } from "./request-reflect.js";
-import { urlParamsSymbol } from "../constants/url-params-symbol.js";
-import type { URLParams } from "../types/url-params.js";
 import type { TestRoute } from "../types/test-route-type.js";
+import { customRouteSymbol } from "../constants/custom-options-symbol.js";
 
-const requestSchema = z.instanceof(Request);
-const responseSchema = z.instanceof(Response);
+type HTTPMethod =
+  | "ALL"
+  | "GET"
+  | "POST"
+  | "PUT"
+  | "DELETE"
+  | "PATCH"
+  | "OPTIONS"
+  | "HEAD"
+  | "TRACE"
+  | "CONNECT";
 
-const fetchSchema: z.ZodSchema<Fetch, Fetch> = z.function({
-  input: [requestSchema],
-  output: z.any(),
-});
+type RouteArgumentOptions<T> = T & { middlewares?: Middleware[] };
+type HiddenOptions<T> = {
+  [customRouteSymbol]?: T;
+} & T;
 
-const urlPatternSchema: z.ZodSchema<URLPattern> = z.instanceof(URLPattern);
-const HTTPMethodsSchema = z.enum([
-  "ALL",
-  "GET",
-  "POST",
-  "PUT",
-  "DELETE",
-  "PATCH",
-  "OPTIONS",
-  "HEAD",
-  "TRACE",
-  "CONNECT",
-]);
+export type RouteArguments = {
+  test?: TestRoute;
+  method?: HTTPMethod;
+  urlPattern?: string | URLPattern;
+  fetch?: Fetch;
+  middlewares?: Middleware[];
+};
 
-const testSchema: z.ZodType<TestRoute> = z.function({
-  input: [requestSchema],
-  output: z.union([z.boolean(), z.promise(z.boolean())]),
-});
+namespace typeVerifier {
+  export const isString = (value: unknown): value is string =>
+    typeof value === "string";
+  export const isFunction = (value: unknown): value is Function =>
+    typeof value === "function";
+  export const isArray = (value: unknown): value is unknown[] =>
+    Array.isArray(value);
+  export const isObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" &&
+    value !== null &&
+    !isArray(value) &&
+    !isFunction(value);
+  export const isURLPattern = (value: unknown): value is string | URLPattern =>
+    value instanceof URLPattern || isString(value);
+  export const isHTTPMethod = (value: unknown): value is HTTPMethod =>
+    isString(value) &&
+    [
+      "ALL",
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "OPTIONS",
+      "HEAD",
+      "TRACE",
+      "CONNECT",
+    ].includes(value);
+  export const withProperty = <T, K extends PropertyKey>(
+    obj: T,
+    property: K,
+  ): obj is T & Record<K, unknown> => isObject(obj) && property in obj;
 
-const middlewareSchema: z.ZodSchema<Middleware, Middleware> = z.function({
-  input: [fetchSchema],
-  output: z.union([fetchSchema, z.promise(fetchSchema)]),
-});
+  export const isFetchOptions = (value: unknown): value is { fetch: Fetch } =>
+    isObject(value) && withProperty(value, "fetch") && isFunction(value.fetch);
 
-class RouteExp {
-  public test: z.output<typeof testSchema> | null;
+  export const isHiddenFetchOptions = (
+    value: unknown,
+  ): value is { [customRouteSymbol]: { fetch: Fetch } } =>
+    isObject(value) &&
+    withProperty(value, customRouteSymbol) &&
+    isObject(value[customRouteSymbol]) &&
+    withProperty(value[customRouteSymbol], "fetch") &&
+    isFunction(value[customRouteSymbol].fetch);
 
-  constructor(prop: { test?: z.output<typeof testSchema> }) {
-    this.test = prop.test ?? null;
-  }
+  export const isRouteArgumentsV0 = (value: unknown): value is [] =>
+    isArray(value) && value.length === 0;
+  export const isRouteArgumentsV1 = (
+    value: unknown,
+  ): value is [
+    method: HTTPMethod,
+    urlPattern: string | URLPattern,
+    fetch: Fetch,
+    options?: RouteArgumentOptions<{}>,
+  ] =>
+    isArray(value) &&
+    isHTTPMethod(value[0]) &&
+    isURLPattern(value[1]) &&
+    isFunction(value[2]);
+  export const isRouteArgumentsV2 = (
+    value: unknown,
+  ): value is [
+    urlPattern: string | URLPattern,
+    fetch: Fetch,
+    options?: RouteArgumentOptions<{ method?: HTTPMethod }>,
+  ] => isArray(value) && isURLPattern(value[0]) && isFunction(value[1]);
+  export const isRouteArgumentsV3 = (
+    value: unknown,
+  ): value is [
+    test: TestRoute,
+    fetch: Fetch,
+    options?: RouteArgumentOptions<{}>,
+  ] => isArray(value) && isFunction(value[0]) && isFunction(value[1]);
+  export const isRouteArgumentsV4 = (
+    value: unknown,
+  ): value is [
+    urlPattern: string | URLPattern,
+    options: HiddenOptions<
+      RouteArgumentOptions<{ fetch: Fetch; method?: HTTPMethod }>
+    >,
+  ] =>
+    isArray(value) &&
+    isURLPattern(value[0]) &&
+    (isFetchOptions(value[1]) || isHiddenFetchOptions(value[1]));
+  export const isRouteArgumentsV5 = (
+    value: unknown,
+  ): value is [
+    options: HiddenOptions<
+      RouteArgumentOptions<{
+        urlPattern?: string | URLPattern;
+        fetch: Fetch;
+        method?: HTTPMethod;
+      }>
+    >,
+  ] =>
+    isArray(value) &&
+    (isFetchOptions(value[0]) || isHiddenFetchOptions(value[0]));
+  export const isRouteArgumentsV6 = (
+    value: unknown,
+  ): value is [
+    method: HTTPMethod,
+    urlPattern: string | URLPattern,
+    options: HiddenOptions<RouteArgumentOptions<{ fetch: Fetch }>>,
+  ] =>
+    isArray(value) &&
+    isHTTPMethod(value[0]) &&
+    isURLPattern(value[1]) &&
+    (isFetchOptions(value[2]) || isHiddenFetchOptions(value[2]));
 }
 
-class FunnyRouteExp extends RouteExp {
-  constructor(prop: {
-    method?: z.output<typeof HTTPMethodsSchema>;
-    urlPattern?: z.output<typeof urlPatternSchema>;
-  }) {
-    super({
-      test: (request) => {
-        const { urlPattern, method } = prop;
-        const methodExpected = method?.toUpperCase() ?? "GET";
-        const isHttpMethodValid = (method: string, methodExpected: string) => {
-          if (methodExpected === "ALL") return true;
-          return method.toUpperCase() === methodExpected;
-        };
-        if (!isHttpMethodValid(request.method, methodExpected)) return false;
-        if (urlPattern === null || urlPattern === undefined) return false;
-        const m = (request: Request) => {
-          const urlPatternResult = urlPattern.exec(request.url);
-          if (urlPatternResult === null) return false;
-          const groupParams: URLParams = {
-            ...RequestReflect.get<URLParams>(request, urlParamsSymbol),
-            ...urlPatternResult.protocol.groups,
-            ...urlPatternResult.username.groups,
-            ...urlPatternResult.password.groups,
-            ...urlPatternResult.hostname.groups,
-            ...urlPatternResult.hash.groups,
-            ...urlPatternResult.pathname.groups,
-            0: undefined,
-          };
-          RequestReflect.set(request, urlParamsSymbol, groupParams);
-          return true;
-        };
-        if (!m(request)) return false;
-        return true;
-      },
-    });
-  }
-}
+const parseRouteArgumentsV1 = (
+  method: HTTPMethod,
+  urlPattern: string | URLPattern,
+  fetch: Fetch,
+  options?: RouteArgumentOptions<{}>,
+): RouteArguments => ({
+  method,
+  urlPattern,
+  fetch,
+  middlewares: options?.middlewares,
+});
+const parseRouteArgumentsV2 = (
+  urlPattern: string | URLPattern,
+  fetch: Fetch,
+  options?: RouteArgumentOptions<{ method?: HTTPMethod }>,
+): RouteArguments => ({
+  urlPattern,
+  fetch,
+  method: options?.method,
+  middlewares: options?.middlewares,
+});
+const parseRouteArgumentsV3 = (
+  test: TestRoute,
+  fetch: Fetch,
+  options?: RouteArgumentOptions<{}>,
+): RouteArguments => ({ test, fetch, middlewares: options?.middlewares });
+const parseRouteArgumentsV4 = (
+  urlPattern: string | URLPattern,
+  options: HiddenOptions<
+    RouteArgumentOptions<{ fetch: Fetch; method?: HTTPMethod }>
+  >,
+): RouteArguments => {
+  const { fetch, method, middlewares } = options[customRouteSymbol] ?? options;
 
-/** @deprecated */
-class ParsedRouteArguments {
-  public test: z.output<typeof testSchema> | null;
-  public method: z.output<typeof HTTPMethodsSchema> | null;
-  public urlPattern: z.output<typeof urlPatternSchema> | null;
-  public fetch: z.output<typeof fetchSchema>;
-  public middlewares: z.output<typeof middlewareSchema>[];
+  return {
+    urlPattern,
+    fetch: fetch,
+    method: method,
+    middlewares: middlewares,
+  };
+};
+const parseRouteArgumentsV5 = (
+  options: HiddenOptions<
+    RouteArgumentOptions<{
+      urlPattern?: string | URLPattern;
+      fetch: Fetch;
+      method?: HTTPMethod;
+    }>
+  >,
+): RouteArguments => {
+  const { urlPattern, fetch, method, middlewares } =
+    options[customRouteSymbol] ?? options;
 
-  constructor(prop: {
-    test?: z.output<typeof testSchema>;
-    method?: z.output<typeof HTTPMethodsSchema>;
-    urlPattern?: z.output<typeof urlPatternSchema>;
-    middlewares?: z.output<typeof middlewareSchema>[];
-    fetch: z.output<typeof fetchSchema>;
-  }) {
-    this.test = prop.test ?? null;
-    this.method = prop.method ?? null;
-    this.urlPattern = prop.urlPattern ?? null;
-    this.fetch = prop.fetch;
-    this.middlewares = prop.middlewares ?? [];
-  }
-}
+  return {
+    urlPattern,
+    fetch,
+    method,
+    middlewares,
+  };
+};
+const parseRouteArgumentsV6 = (
+  method: HTTPMethod,
+  urlPattern: string | URLPattern,
+  options: HiddenOptions<RouteArgumentOptions<{ fetch: Fetch }>>,
+): RouteArguments => {
+  const { fetch, middlewares } = options[customRouteSymbol] ?? options;
+  return {
+    method,
+    urlPattern,
+    fetch,
+    middlewares,
+  };
+};
 
-type HTTPMethod = z.infer<typeof HTTPMethodsSchema>;
-
-/**
- * Patterns:
- * - [] => null
- * - [fetch] =>                                                                           Route { test: FunnyRouteExp { method: "GET",  urlPattern: "*" }, middlewares:[], fetch }
- * - [fetch, { method?: HTTPMethod, middlewares?: middleware[] }] =>                      Route { test: FunnyRouteExp { method,         urlPattern: "*" }, middlewares,    fetch }
- * - [string | URLPattern, fetch] =>                                                      Route { test: FunnyRouteExp { method: "GET",  urlPattern,     }, middlewares:[], fetch }
- * - [string | URLPattern, fetch, { method?: HTTPMethod, middlewares?: middleware[] }] => Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
- * - [string | URLPattern, { fetch, method?: HTTPMethod, middlewares?: middleware[] }] => Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
- * - [method, string | URLPattern, fetch] =>                                              Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares:[], fetch }
- * - [method, string | URLPattern, fetch, { middlewares?: middleware[] }] =>              Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
- * - [method, string | URLPattern, { fetch, middlewares?: middleware[] }] =>              Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
- * - [test, fetch] =>                                                                     Route { test: RouteExp { test }, middlewares:[], fetch }
- * - [test, fetch, { middlewares?: middleware[] }] =>                                     Route { test: RouteExp { test }, middlewares,    fetch }
- */
-const useArgumentsSchema = z.union([
-  // [] => null
-  z.tuple([]).transform(() => null),
-  // [fetch] =>                                                                           Route { test: FunnyRouteExp { method: "GET",  urlPattern: "*" }, middlewares:[], fetch }
-  z
-    .tuple([fetchSchema])
-    .transform(
-      ([fetch]) =>
-        new Route(
-          new FunnyRouteExp({ method: "GET", urlPattern: urlPatternFrom("*") })
-            .test ?? (() => false),
-          [],
-          fetch,
-        ),
-    ),
-  // [fetch, { method?: HTTPMethod, middlewares?: middleware[] }] =>                      Route { test: FunnyRouteExp { method,         urlPattern: "*" }, middlewares,    fetch }
-  z
-    .tuple([
-      fetchSchema,
-      z.object({
-        method: HTTPMethodsSchema.optional(),
-        middlewares: z.array(middlewareSchema).optional(),
-      }),
-    ])
-    .transform(
-      ([fetch, { method, middlewares }]) =>
-        new Route(
-          new FunnyRouteExp({
-            method: method ?? "GET",
-            urlPattern: urlPatternFrom("*"),
-          }).test ?? (() => false),
-          middlewares ?? [],
-          fetch,
-        ),
-    ),
-  // [string | URLPattern, fetch] =>                                                      Route { test: FunnyRouteExp { method: "GET",  urlPattern,     }, middlewares:[], fetch }
-  z.tuple([z.string().or(z.instanceof(URLPattern)), fetchSchema]).transform(
-    ([urlPattern, fetch]) =>
-      new Route(
-        new FunnyRouteExp({
-          method: "GET",
-          urlPattern: urlPatternFrom(urlPattern),
-        }).test ?? (() => false),
-        [],
-        fetch,
-      ),
-  ),
-  // [string | URLPattern, { fetch, method?: HTTPMethod, middlewares?: middleware[] }] => Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
-  z
-    .tuple([
-      z.string().or(z.instanceof(URLPattern)),
-      z.object({
-        fetch: fetchSchema,
-        method: HTTPMethodsSchema.optional(),
-        middlewares: z.array(middlewareSchema).optional(),
-      }),
-    ])
-    .transform(
-      ([urlPattern, { fetch, method, middlewares }]) =>
-        new Route(
-          new FunnyRouteExp({
-            method: method ?? "GET",
-            urlPattern: urlPatternFrom(urlPattern),
-          }).test ?? (() => false),
-          middlewares ?? [],
-          fetch,
-        ),
-    ),
-  // [string | URLPattern, fetch, { method?: HTTPMethod, middlewares?: middleware[] }] => Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
-  z
-    .tuple([
-      z.string().or(z.instanceof(URLPattern)),
-      fetchSchema,
-      z.object({
-        method: HTTPMethodsSchema.optional(),
-        middlewares: z.array(middlewareSchema).optional(),
-      }),
-    ])
-    .transform(
-      ([urlPattern, fetch, { method, middlewares }]) =>
-        new Route(
-          new FunnyRouteExp({
-            method: method ?? "GET",
-            urlPattern: urlPatternFrom(urlPattern),
-          }).test ?? (() => false),
-          middlewares ?? [],
-          fetch,
-        ),
-    ),
-  // [method, string | URLPattern, fetch] =>                                              Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares:[], fetch }
-  z
-    .tuple([
-      HTTPMethodsSchema,
-      z.string().or(z.instanceof(URLPattern)),
-      fetchSchema,
-    ])
-    .transform(
-      ([method, urlPattern, fetch]) =>
-        new Route(
-          new FunnyRouteExp({ method, urlPattern: urlPatternFrom(urlPattern) })
-            .test ?? (() => false),
-          [],
-          fetch,
-        ),
-    ),
-  // [method, string | URLPattern, fetch, { middlewares?: middleware[] }] =>              Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
-  z
-    .tuple([
-      HTTPMethodsSchema,
-      z.string().or(z.instanceof(URLPattern)),
-      fetchSchema,
-      z.object({ middlewares: z.array(middlewareSchema).optional() }),
-    ])
-    .transform(
-      ([method, urlPattern, fetch, { middlewares }]) =>
-        new Route(
-          new FunnyRouteExp({
-            method: method ?? "GET",
-            urlPattern: urlPatternFrom(urlPattern),
-          }).test ?? (() => false),
-          middlewares ?? [],
-          fetch,
-        ),
-    ),
-  // [method, string | URLPattern, { fetch, middlewares?: middleware[] }] =>              Route { test: FunnyRouteExp { method,         urlPattern,     }, middlewares,    fetch }
-  z
-    .tuple([
-      HTTPMethodsSchema,
-      z.string().or(z.instanceof(URLPattern)),
-      z.object({
-        fetch: fetchSchema,
-        middlewares: z.array(middlewareSchema).optional(),
-      }),
-    ])
-    .transform(
-      ([method, urlPattern, { fetch, middlewares }]) =>
-        new Route(
-          new FunnyRouteExp({
-            method,
-            urlPattern: urlPatternFrom(urlPattern),
-          }).test ?? (() => false),
-          middlewares ?? [],
-          fetch,
-        ),
-    ),
-  // [test, fetch] =>                                                                     Route { test: RouteExp { test }, middlewares:[], fetch }
-  z
-    .tuple([testSchema, fetchSchema])
-    .transform(
-      ([test, fetch]) =>
-        new Route(new RouteExp({ test }).test ?? (() => false), [], fetch),
-    ),
-  // [test, fetch, { middlewares?: middleware[] }] =>                                     Route { test: RouteExp { test }, middlewares,    fetch }
-  z
-    .tuple([
-      testSchema,
-      fetchSchema,
-      z.object({ middlewares: z.array(middlewareSchema).optional() }),
-    ])
-    .transform(
-      ([test, fetch, { middlewares }]) =>
-        new Route(
-          new RouteExp({ test }).test ?? (() => false),
-          middlewares ?? [],
-          fetch,
-        ),
-    ),
-]);
-
-export type RouteArguments = z.input<typeof useArgumentsSchema>;
-
-export const parseRouteArguments = (routeArguments: RouteArguments) => {
-  const { success, data } = useArgumentsSchema.safeParse(routeArguments);
-  if (!success) {
-    throw new ArgumentsError();
-  }
-  return data;
+export const parseRouteArguments = (...args: unknown[]): RouteArguments => {
+  if (typeVerifier.isRouteArgumentsV0(args)) return {};
+  if (typeVerifier.isRouteArgumentsV1(args))
+    return parseRouteArgumentsV1(...args);
+  if (typeVerifier.isRouteArgumentsV2(args))
+    return parseRouteArgumentsV2(...args);
+  if (typeVerifier.isRouteArgumentsV3(args))
+    return parseRouteArgumentsV3(...args);
+  if (typeVerifier.isRouteArgumentsV4(args))
+    return parseRouteArgumentsV4(...args);
+  if (typeVerifier.isRouteArgumentsV5(args))
+    return parseRouteArgumentsV5(...args);
+  if (typeVerifier.isRouteArgumentsV6(args))
+    return parseRouteArgumentsV6(...args);
+  throw new TypeError(
+    "Invalid route arguments. Please refer to the documentation for the correct usage.",
+  );
 };
 
 /**
- * Parses the arguments for a route.
+ * Generic route interface that defines multiple overloaded function signatures
+ * for creating HTTP routes with different argument patterns.
  *
- * @param args
- * @returns
- * @deprecated
+ * This interface provides flexibility in how routes can be defined, supporting
+ * various combinations of method, URL pattern, fetch handler, and options.
+ *
+ * @template T - The return type of the route function
+ *
+ * @example
+ * ```typescript
+ * // Using with explicit method, URL pattern, and handler
+ * const route1: route<void> = (method, urlPattern, fetch, options) => {
+ *   // Implementation
+ * };
+ *
+ * // Using with URL pattern and handler (method defaults to GET)
+ * const route2: route<void> = (urlPattern, fetch, options) => {
+ *   // Implementation
+ * };
+ * ```
  */
-export const useRouteArguments = (...args: RouteArguments): Route | null => {
-  const route = parseRouteArguments(args);
+export interface route<T> {
+  /**
+   * Creates a route with explicit HTTP method, URL pattern, and fetch handler.
+   *
+   * @param method - HTTP method (GET, POST, PUT, DELETE, etc.)
+   * @param urlPattern - URL pattern as string or URLPattern instance for matching requests
+   * @param fetch - Fetch handler function to process matching requests
+   * @param options - Optional configuration object with middlewares
+   * @returns The configured route of type T
+   *
+   * @example
+   * ```typescript
+   * route("POST", "/api/users", async (req) => {
+   *   return Response.json({ success: true });
+   * }, { middlewares: [authMiddleware] });
+   * ```
+   */
+  (
+    method: HTTPMethod,
+    urlPattern: string | URLPattern,
+    fetch: Fetch,
+    options?: RouteArgumentOptions<{}>,
+  ): T;
 
-  if (route === null) return null;
+  /**
+   * Creates a route with explicit HTTP method, URL pattern, and options object containing the fetch handler.
+   *
+   * @param method - HTTP method (GET, POST, PUT, DELETE, etc.)
+   * @param urlPattern - URL pattern as string or URLPattern instance for matching requests
+   * @param options - Configuration object with required fetch handler and optional middlewares
+   * @returns The configured route of type T
+   *
+   * @example
+   * ```typescript
+   * route("POST", "/api/users", {
+   *   fetch: async (req) => Response.json({ success: true }),
+   *   middlewares: [authMiddleware]
+   * });
+   * ```
+   */
+  (
+    method: HTTPMethod,
+    urlPattern: string | URLPattern,
+    options: RouteArgumentOptions<{ fetch: Fetch }>,
+  ): T;
 
-  return route;
-};
+  /**
+   * Creates a route with URL pattern and fetch handler (HTTP method defaults to GET).
+   *
+   * @param urlPattern - URL pattern as string or URLPattern instance for matching requests
+   * @param fetch - Fetch handler function to process matching requests
+   * @param options - Optional configuration object with method override and/or middlewares
+   * @returns The configured route of type T
+   *
+   * @example
+   * ```typescript
+   * route("/api/users", fetchHandler, { method: "POST" });
+   * route("/api/users", fetchHandler, { middlewares: [corsMiddleware] });
+   * ```
+   */
+  (
+    urlPattern: string | URLPattern,
+    fetch: Fetch,
+    options?: RouteArgumentOptions<{ method?: HTTPMethod }>,
+  ): T;
+
+  /**
+   * Creates a route with a custom test function and fetch handler.
+   * Useful for complex routing logic that goes beyond simple URL patterns.
+   *
+   * @param test - Custom test function to determine if the route matches a request
+   * @param fetch - Fetch handler function to process matching requests
+   * @param options - Optional configuration object with middlewares
+   * @returns The configured route of type T
+   *
+   * @example
+   * ```typescript
+   * const customTest = (req: Request) => req.headers.get('content-type') === 'application/json';
+   * route(customTest, fetchHandler, { middlewares: [jsonMiddleware] });
+   * ```
+   */
+  (test: TestRoute, fetch: Fetch, options?: RouteArgumentOptions<{}>): T;
+
+  /**
+   * Creates a route with URL pattern and options object containing the fetch handler.
+   *
+   * @param urlPattern - URL pattern as string or URLPattern instance for matching requests
+   * @param options - Configuration object with required fetch handler and optional method/middlewares
+   * @returns The configured route of type T
+   *
+   * @example
+   * ```typescript
+   * route("/api/users", {
+   *   fetch: fetchHandler,
+   *   method: "PUT",
+   *   middlewares: [validateMiddleware]
+   * });
+   * ```
+   */
+  (
+    urlPattern: string | URLPattern,
+    options: RouteArgumentOptions<{ fetch: Fetch; method?: HTTPMethod }>,
+  ): T;
+
+  /**
+   * Creates a route from a single options object containing all configuration.
+   * Most flexible format allowing all route properties to be specified in one object.
+   *
+   * @param options - Configuration object with required fetch handler and optional urlPattern/method/middlewares
+   * @returns The configured route of type T
+   *
+   * @example
+   * ```typescript
+   * route({
+   *   urlPattern: "/api/users/:id",
+   *   method: "DELETE",
+   *   fetch: deleteUserHandler,
+   *   middlewares: [authMiddleware, validateIdMiddleware]
+   * });
+   * ```
+   */
+  (
+    options: RouteArgumentOptions<{
+      urlPattern?: string | URLPattern;
+      fetch: Fetch;
+      method?: HTTPMethod;
+    }>,
+  ): T;
+}
