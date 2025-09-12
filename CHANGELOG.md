@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.9.0](https://github.com/JonDotsoy/artur/compare/artur-v1.8.3...artur-v1.9.0) (2025-09-12)
+
+
+### Features
+
+* add exports for sent-event module in package.json ([0bce889](https://github.com/JonDotsoy/artur/commit/0bce8898bcab786ed2b921d01b49411e1fd6c05c))
+* enhance EventsReadableStream with iterable and toArray methods; add error handling in EventSource.create ([a0d3c51](https://github.com/JonDotsoy/artur/commit/a0d3c51984b26728408d8676736550da08896a42))
+* export EventSource, EventSourceRequest, and EventsReadableStream from event-source module ([2fd142c](https://github.com/JonDotsoy/artur/commit/2fd142c922f561a3b203f18be1e1144d759c04a4))
+* implement Server-Sent Events (SSE) module with streaming capabilities and HTTP router integration ([1d6c15c](https://github.com/JonDotsoy/artur/commit/1d6c15c4587d8a514febdf6dea8cef7c884efb54))
+
+
+### Bug Fixes
+
+* update test function to validate 'accept' header for text/event-stream ([a668bab](https://github.com/JonDotsoy/artur/commit/a668bab5e518425aebc508c57b04442e9d738bcb))
+
 ## [1.8.3](https://github.com/JonDotsoy/artur/compare/artur-v1.8.2...artur-v1.8.3) (2025-09-12)
 
 
