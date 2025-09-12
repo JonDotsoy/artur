@@ -2,7 +2,7 @@ import { URLPattern } from "urlpattern-polyfill";
 import type { Fetch } from "../types/fetch-type.js";
 import type { Middleware } from "../types/middleware.js";
 import type { TestRoute } from "../types/test-route-type.js";
-import { customOptionsSymbol } from "../constants/custom-options-symbol.js";
+import { customRouteSymbol } from "../constants/custom-options-symbol.js";
 
 type HTTPMethod =
   | "ALL"
@@ -18,7 +18,7 @@ type HTTPMethod =
 
 type RouteArgumentOptions<T> = T & { middlewares?: Middleware[] };
 type HiddenOptions<T> = {
-  [customOptionsSymbol]?: T;
+  [customRouteSymbol]?: T;
 } & T;
 
 export type RouteArguments = {
@@ -67,12 +67,12 @@ namespace typeVerifier {
 
   export const isHiddenFetchOptions = (
     value: unknown,
-  ): value is { [customOptionsSymbol]: { fetch: Fetch } } =>
+  ): value is { [customRouteSymbol]: { fetch: Fetch } } =>
     isObject(value) &&
-    withProperty(value, customOptionsSymbol) &&
-    isObject(value[customOptionsSymbol]) &&
-    withProperty(value[customOptionsSymbol], "fetch") &&
-    isFunction(value[customOptionsSymbol].fetch);
+    withProperty(value, customRouteSymbol) &&
+    isObject(value[customRouteSymbol]) &&
+    withProperty(value[customRouteSymbol], "fetch") &&
+    isFunction(value[customRouteSymbol].fetch);
 
   export const isRouteArgumentsV0 = (value: unknown): value is [] =>
     isArray(value) && value.length === 0;
@@ -171,8 +171,7 @@ const parseRouteArgumentsV4 = (
     RouteArgumentOptions<{ fetch: Fetch; method?: HTTPMethod }>
   >,
 ): RouteArguments => {
-  const { fetch, method, middlewares } =
-    options[customOptionsSymbol] ?? options;
+  const { fetch, method, middlewares } = options[customRouteSymbol] ?? options;
 
   return {
     urlPattern,
@@ -191,7 +190,7 @@ const parseRouteArgumentsV5 = (
   >,
 ): RouteArguments => {
   const { urlPattern, fetch, method, middlewares } =
-    options[customOptionsSymbol] ?? options;
+    options[customRouteSymbol] ?? options;
 
   return {
     urlPattern,
@@ -205,7 +204,7 @@ const parseRouteArgumentsV6 = (
   urlPattern: string | URLPattern,
   options: HiddenOptions<RouteArgumentOptions<{ fetch: Fetch }>>,
 ): RouteArguments => {
-  const { fetch, middlewares } = options[customOptionsSymbol] ?? options;
+  const { fetch, middlewares } = options[customRouteSymbol] ?? options;
   return {
     method,
     urlPattern,

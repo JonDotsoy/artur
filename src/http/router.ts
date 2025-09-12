@@ -1,7 +1,7 @@
 import { decorate } from "@jondotsoy/decorate";
 import { errorToResponse } from "../utils/describeErrorResponse.js";
 import type { IncomingMessage } from "http";
-import { customOptionsSymbol } from "./constants/custom-options-symbol.js";
+import { customRouteSymbol } from "./constants/custom-options-symbol.js";
 import type { Fetch } from "./types/fetch-type.js";
 import type { Middleware } from "./types/middleware.js";
 import { Route } from "./route.js";
@@ -39,7 +39,12 @@ export type RouterOptions<E extends ErrorHandling> = {
 };
 
 export class Router<E extends ErrorHandling = "default-catching"> {
-  static customOptions = customOptionsSymbol;
+  static customRoute = customRouteSymbol;
+
+  /** @deprecated Use Router.customRoute instead */
+  static customOptions = customRouteSymbol;
+  /** @deprecated Use Router.customRoute instead */
+  static deprecated_customOptions = customRouteSymbol;
 
   routes: Route[] = [];
 
@@ -181,7 +186,7 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     // throw new Error("Method not implemented.");
   };
 
-  [customOptionsSymbol] = {
+  [customRouteSymbol] = {
     fetch: this.fetch,
   };
 }

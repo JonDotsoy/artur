@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { parseRouteArguments } from "./parse-route-arguments";
 import { URLPattern } from "urlpattern-polyfill";
 import type { Fetch } from "../types/fetch-type";
-import { customOptionsSymbol } from "../constants/custom-options-symbol";
+import { customRouteSymbol } from "../constants/custom-options-symbol";
 
 describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   const testRequest = mock((request: Request) => true);
@@ -112,7 +112,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse urlPattern string and options object with fetch property using custom options symbol", async () => {
     const result = parseRouteArguments(urlPattern, {
-      [customOptionsSymbol]: { fetch },
+      [customRouteSymbol]: { fetch },
     });
 
     expect(result).toBeObject();
@@ -131,7 +131,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse method, urlPattern string, and options object with fetch property using custom options symbol", async () => {
     const result = parseRouteArguments(method, urlPattern, {
-      [customOptionsSymbol]: { fetch },
+      [customRouteSymbol]: { fetch },
     });
 
     expect(result).toBeObject();
@@ -156,7 +156,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse urlPattern string and options object with fetch, method, and middlewares using custom options symbol", async () => {
     const result = parseRouteArguments(urlPattern, {
-      [customOptionsSymbol]: {
+      [customRouteSymbol]: {
         fetch,
         method,
         middlewares,
@@ -181,7 +181,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse urlPattern string and options object with fetch and method using custom options symbol", async () => {
     const result = parseRouteArguments(urlPattern, {
-      [customOptionsSymbol]: { fetch, method },
+      [customRouteSymbol]: { fetch, method },
     });
 
     expect(result).toBeObject();
@@ -203,7 +203,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse urlPattern string and options object with fetch and middlewares using custom options symbol (no method, no test)", async () => {
     const result = parseRouteArguments(urlPattern, {
-      [customOptionsSymbol]: { fetch, middlewares },
+      [customRouteSymbol]: { fetch, middlewares },
     });
 
     expect(result).toBeObject();
@@ -237,7 +237,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse options object with fetch property nested under custom options symbol", async () => {
-    const result = parseRouteArguments({ [customOptionsSymbol]: { fetch } });
+    const result = parseRouteArguments({ [customRouteSymbol]: { fetch } });
 
     expect(result).toBeObject();
     expect(result.method).toBeUndefined();
@@ -261,7 +261,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse options object with fetch, method, and middlewares properties using custom options symbol", async () => {
     const result = parseRouteArguments({
-      [customOptionsSymbol]: { fetch, method, middlewares },
+      [customRouteSymbol]: { fetch, method, middlewares },
     });
 
     expect(result).toBeObject();
@@ -286,7 +286,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse options object with fetch and method properties using custom options symbol", async () => {
     const result = parseRouteArguments({
-      [customOptionsSymbol]: { fetch, method },
+      [customRouteSymbol]: { fetch, method },
     });
 
     expect(result).toBeObject();
@@ -311,7 +311,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
 
   test("should parse options object with fetch and middlewares properties using custom options symbol (no method, no test)", async () => {
     const result = parseRouteArguments({
-      [customOptionsSymbol]: { fetch, middlewares },
+      [customRouteSymbol]: { fetch, middlewares },
     });
 
     expect(result).toBeObject();

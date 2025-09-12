@@ -447,7 +447,7 @@ export class JsonRpcRouter {
    * Provides integration with the HTTP router system.
    */
   // @ts-ignore
-  [Router.customOptions]: RouterOptionsDef<any> = {
+  [Router.customRoute]: RouterOptionsDef<any> = {
     fetch: this.fetch,
   };
 }
