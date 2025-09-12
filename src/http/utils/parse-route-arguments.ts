@@ -143,6 +143,53 @@ export type RouteArguments = {
   middlewares?: Middleware[];
 };
 
+/**
+ * Creates a default RouteArguments object from a partial configuration.
+ * This function serves as a type-safe way to ensure that route arguments
+ * conform to the expected RouteArguments structure.
+ *
+ * The function accepts two different configuration patterns:
+ * 1. Routes with custom test functions (test-based routing)
+ * 2. Routes with HTTP method and URL pattern (traditional routing)
+ *
+ * @param routeArguments - Partial route configuration that must include either:
+ *   - `test`, `fetch`, and optionally `middlewares` for custom test-based routes
+ *   - `method`, `urlPattern`, `fetch`, and optionally `middlewares` for traditional routes
+ *
+ * @returns A complete RouteArguments object that can be used by the routing system
+ *
+ * @example
+ * ```typescript
+ * // Test-based route configuration
+ * const customRoute = defaultRouteArguments({
+ *   test: (req) => req.headers.get('content-type') === 'application/json',
+ *   fetch: async (req) => new Response('JSON endpoint'),
+ *   middlewares: [jsonValidationMiddleware]
+ * });
+ *
+ * // Traditional route configuration
+ * const standardRoute = defaultRouteArguments({
+ *   method: 'POST',
+ *   urlPattern: '/api/users/:id',
+ *   fetch: async (req) => new Response('User created'),
+ *   middlewares: [authMiddleware, validationMiddleware]
+ * });
+ * ```
+ *
+ * @remarks
+ * This function currently acts as a pass-through identity function,
+ * but provides type safety and a consistent API for creating route arguments.
+ * It ensures that the provided configuration matches one of the expected patterns
+ * and can be extended in the future to provide default values or validation.
+ */
+export const defaultRouteArguments = (
+  routeArguments:
+    | Pick<RouteArguments, "test" | "fetch" | "middlewares">
+    | Pick<RouteArguments, "method" | "urlPattern" | "fetch" | "middlewares">,
+) => {
+  return routeArguments;
+};
+
 namespace typeVerifier {
   export const isString = (value: unknown): value is string =>
     typeof value === "string";
