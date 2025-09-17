@@ -2,22 +2,23 @@ import type { ExtractValidationType } from "./types/extract-validation-type.js";
 import type { Validation } from "./types/validation.js";
 import type { JsonRpcHandler } from "./types/json-rpc-handler.js";
 import type { JsonRpcEvent } from "./types/json-rpc-event.js";
-import type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
-import type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
 import type { JsonRpcResponse } from "./types/json-rpc-response.js";
 import type { JsonRpcRequest } from "./types/json-rpc-request.js";
 import type { JsonRpcNotification } from "./types/json-rpc-notification.js";
 import { JsonRpcError } from "./json-rpc-error.js";
 import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
-import { type RouterOptionsDef } from "../http/types/router-options-def.js";
-import { EventEncoder } from "../event-source/event-encoder/event-encoder.js";
 import { Queue } from "@jondotsoy/utils-js/queue";
 import { bodyRequest } from "./schemas/body-request.js";
 import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-options.js";
 import { defaultExtractSessionId } from "./default-extract-session-id.js";
 import { sessionMemoryStore } from "./create-session-memory-store.1.js";
 import { Session } from "./session.js";
+import { defaultRouteArguments } from "../http/utils/parse-route-arguments.js";
+import {
+  EventSource,
+  EventsReadableStream,
+} from "../event-source/event-source.js";
 
 export type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
 export type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
@@ -36,7 +37,7 @@ export class JsonRpcRouter {
   /** Map of registered method names to their handlers */
   private handlers = new Map<string, JsonRpcHandler>();
   /** Set of active request promises for cleanup tracking */
-  private requests = new Set<Promise<JsonRpcResponse>>();
+  private requests = new Set<Promise<any>>();
   /** Map of method names to their parameter validation schemas */
   private paramsValidations = new Map<
     string,
@@ -242,6 +243,87 @@ export class JsonRpcRouter {
     });
   }
 
+  parseParams = (method: string, value: unknown) => {
+    const validationInput = this.paramsValidations.get(method)?.input ?? null;
+    if (!validationInput) {
+      return value;
+    }
+    const parsed = validationInput.safeParse(value);
+    if (!parsed.success) {
+      const error = parsed.error;
+      throw new JsonRpcError(-32602, "Invalid params", error);
+    }
+    return parsed.data;
+  };
+
+  parseResult = (method: string, value: unknown) => {
+    const validationOutput = this.paramsValidations.get(method)?.output ?? null;
+    if (!validationOutput) {
+      return value;
+    }
+    const parsed = validationOutput.safeParse(value);
+    if (!parsed.success) {
+      const error = parsed.error;
+      throw new JsonRpcError(-32603, "Internal error", error);
+    }
+    return parsed.data;
+  };
+
+  /**
+   * Processes a JSON-RPC request or notification and returns a response.
+   *
+   * This method handles the complete lifecycle of a JSON-RPC request including:
+   * - Method resolution and validation
+   * - Parameter validation using Zod schemas (if configured)
+   * - Handler execution
+   * - Result validation using Zod schemas (if configured)
+   * - Response formatting
+   *
+   * @template P - The type of the request parameters
+   * @param request - The JSON-RPC request or notification to process
+   * @param event - Optional event context passed to the handler
+   * @returns A Promise that resolves to a JSON-RPC response for requests, or null for notifications
+   *
+   * @throws {JsonRpcError} -32601 - When the requested method is not found
+   * @throws {JsonRpcError} -32602 - When request parameters fail validation
+   * @throws {JsonRpcError} -32603 - When the handler result fails output validation
+   *
+   * @example
+   * ```typescript
+   * const request = { jsonrpc: "2.0", method: "add", params: [1, 2], id: 1 };
+   * const response = await router.processRequest(request);
+   * // Returns: { jsonrpc: "2.0", result: 3, id: 1 }
+   * ```
+   */
+  processRequest = async <P = any>(
+    request: JsonRpcRequest<P> | JsonRpcNotification<P>,
+    event?: JsonRpcEvent,
+  ): Promise<JsonRpcResponse | null> => {
+    const requestId = "id" in request ? request.id : null;
+    const method = request.method;
+
+    const handler = this.handlers.get(method);
+
+    if (!handler) {
+      throw new JsonRpcError(-32601, `Method not found: ${method}`);
+    }
+
+    const params = this.parseParams(method, request.params);
+
+    const result = this.parseResult(
+      method,
+      await handler(params, request, event ?? {}),
+    );
+
+    if (!requestId) return null;
+
+    return {
+      id: requestId,
+      jsonrpc: "2.0",
+      result,
+    };
+  };
+
   /**
    * Processes a JSON-RPC request and returns the response.
    * Handles method resolution, parameter validation, and error handling.
@@ -250,74 +332,47 @@ export class JsonRpcRouter {
    * @returns Object containing the response promise
    */
   request<P = any>(
-    request: JsonRpcRequest<P>,
+    request: JsonRpcRequest<P> | JsonRpcNotification<P>,
     event?: JsonRpcEvent,
-  ): { response: Promise<JsonRpcResponse> } {
-    const handler = this.handlers.get(request.method);
-    const validation = this.paramsValidations.get(request.method) ?? null;
-
-    const process = Promise.withResolvers<JsonRpcResponse>();
-
-    if (validation?.input) {
-      const parsed = validation.input.safeParse(request.params);
-      if (!parsed.success) {
-        const error = parsed.error;
-
-        const jsonRpcError = new JsonRpcError(-32602, "Invalid params", error);
-
-        process.resolve(jsonRpcError.toJsonRpcResponse(request.id));
-
-        return {
-          response: process.promise,
-        };
-      }
-    }
-
-    this.requests.add(process.promise);
-
-    const params = request.params;
-    Promise.resolve(handler)
-      .then(async (handler): Promise<JsonRpcResultResponse> => {
-        if (!handler)
-          throw new JsonRpcError(-32601, `Method not found: ${request.method}`);
-
-        const result = await handler(params, request, event ?? {});
-
-        if (validation?.output) {
-          const parsed = validation.output.safeParse(result);
-          if (!parsed.success) {
-            const error = parsed.error;
-
-            console.error(
-              `Output validation failed for method ${request.method}:`,
-              error,
-            );
-            throw new JsonRpcError(-32603, "Internal error");
-          }
+  ): {
+    then: Promise<null | JsonRpcResponse | JsonRpcError>["then"];
+    /**
+     * @deprecated Use the returned promise directly via `.then` instead of accessing `.response`.
+     */
+    response: Promise<null | JsonRpcResponse | JsonRpcError>;
+  } {
+    const process = this.processRequest(request, event)
+      .catch((error) => {
+        if (JsonRpcError.isJsonRpcError(error)) {
+          return error.toJsonRpcResponse(
+            "id" in request ? request.id ?? null : null,
+          );
         }
-
-        return {
-          id: request.id,
-          jsonrpc: "2.0",
-          result: result,
-        };
-      })
-      .catch((error): JsonRpcErrorResponse => {
-        return JsonRpcError.isJsonRpcError(error)
-          ? error.toJsonRpcResponse(request.id)
-          : new JsonRpcError(-32603, "Internal error", error).toJsonRpcResponse(
-              request.id,
-            );
-      })
-      .then((response) => {
-        process.resolve(response);
+        console.error("Internal error processing request:", error);
+        return new JsonRpcError(-32603, "Internal error").toJsonRpcResponse(
+          "id" in request ? request.id ?? null : null,
+        );
       })
       .finally(() => {
-        this.requests.delete(process.promise);
+        this.requests.delete(process);
       });
 
+    this.requests.add(process);
+
+    const then = <TResult1 = JsonRpcResponse | null, TResult2 = never>(
+      onfulfilled?:
+        | ((value: JsonRpcResponse | null) => TResult1 | PromiseLike<TResult1>)
+        | undefined
+        | null,
+      onrejected?:
+        | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+        | undefined
+        | null,
+    ) => process.then(onfulfilled, onrejected);
+
     return {
-      response: process.promise,
+      then,
+      response: process,
     };
   }
 
@@ -329,53 +384,96 @@ export class JsonRpcRouter {
    * @returns HTTP response with JSON-RPC result or SSE stream
    */
   fetch = async (request: Request): Promise<Response> => {
+    const sseEnabled = this.options.sseEnabled;
+
     const event: JsonRpcEvent = {
       httpRequest: request,
     };
 
-    try {
-      const method = request.method;
-      const contentType = request.headers.get("Content-Type");
+    const router = new Router();
 
-      if (method === "POST") {
-        const body =
-          contentType === "application/json" ? await request.json() : null;
-        const bodyParsed = bodyRequest.safeParse(body);
-        if (!bodyParsed.success) {
-          return new Response("Bad Request", { status: 400 });
-        }
+    if (sseEnabled) {
+      const sessionId = await this.options.extractSessionId(event);
 
-        const getResponseForPostMethod = (e: {
-          response: Promise<JsonRpcResponse>;
-        }) => (method === "POST" ? e.response : null);
+      router.route({
+        test: (request: Request) => {
+          const isMethodGet = request.method === "GET";
+          const isMethodPost = request.method === "POST";
+          const acceptEventStream =
+            request.headers.get("accept")?.includes("text/event-stream") ??
+            false;
 
-        const response = Array.isArray(bodyParsed.data)
-          ? await Promise.all(
-              bodyParsed.data.map((req) =>
-                getResponseForPostMethod(this.request(req, event)),
-              ),
-            )
-          : await getResponseForPostMethod(
-              this.request(bodyParsed.data, event),
-            );
+          return acceptEventStream && (isMethodGet || isMethodPost);
+        },
+        fetch: async (request: Request) => {
+          if (!sessionId) {
+            return new Response("Bad Request", { status: 400 });
+          }
 
-        return new Response(
-          method === "POST" ? JSON.stringify(response) : null,
-          {
+          const session = this.openSession(sessionId);
+
+          const eventSource = new EventSource({
+            async start() {
+              return new EventsReadableStream({
+                start: async (controller) => {
+                  for await (const ctl of session.consume(request.signal)) {
+                    const { message, ack } = ctl;
+                    controller.enqueue({ data: message });
+                    ack();
+                  }
+                },
+              });
+            },
+          });
+
+          return eventSource.fetch(request);
+        },
+      });
+
+      router.route({
+        method: "PUT",
+        test: (request: Request) =>
+          request.headers.get("content-type")?.includes("application/json") ??
+          false,
+        fetch: async (request) => {
+          if (!sessionId) {
+            return new Response("Bad Request", { status: 400 });
+          }
+
+          const session = this.openSession(sessionId);
+
+          const body = await request.json();
+
+          const bodyParsed = bodyRequest.safeParse(body);
+
+          if (!bodyParsed.success) {
+            return new Response("Bad Request", { status: 400 });
+          }
+
+          const parsedDataArray = Array.isArray(bodyParsed.data)
+            ? bodyParsed.data
+            : [bodyParsed.data];
+
+          for (const jsonRpcRequest of parsedDataArray) {
+            const responseOrError = await this.request(jsonRpcRequest, event);
+            if (!responseOrError) continue;
+            await session.enqueueResponseOrError(responseOrError);
+          }
+
+          return new Response(null, {
             status: 200,
-          },
-        );
-      }
+          });
+        },
+      });
+    }
 
-      if (this.options.sseEnabled && method === "PUT") {
-        const sessionId = await this.options.extractSessionId(event);
-
-        if (!sessionId) {
-          return new Response("Bad Request", { status: 400 });
-        }
-
-        const body =
-          contentType === "application/json" ? await request.json() : null;
+    router.route({
+      method: "POST",
+      test: (request: Request) =>
+        request.headers.get("content-type")?.includes("application/json") ??
+        false,
+      fetch: async (request) => {
+        const body = await request.json();
 
         const bodyParsed = bodyRequest.safeParse(body);
 
@@ -383,63 +481,45 @@ export class JsonRpcRouter {
           return new Response("Bad Request", { status: 400 });
         }
 
-        const session = this.openSession(sessionId);
-
-        const parsedDataArray = Array.isArray(bodyParsed.data)
-          ? bodyParsed.data
-          : [bodyParsed.data];
-
-        for (const jsonRpcRequest of parsedDataArray) {
-          await session.request(jsonRpcRequest, event);
+        if (Array.isArray(bodyParsed.data)) {
+          const responses = await Promise.all(
+            bodyParsed.data.map(async (req) => {
+              try {
+                return await this.request(req, event);
+              } catch (error) {
+                if (JsonRpcError.isJsonRpcError(error)) {
+                  return error.toJsonRpcResponse(req.id ?? null);
+                }
+                console.error("Internal error processing request:", error);
+                return new JsonRpcError(
+                  -32603,
+                  "Internal error",
+                ).toJsonRpcResponse(req.id ?? null);
+              }
+            }),
+          );
+          return Response.json(responses);
         }
 
-        return new Response(null, {
-          status: 200,
-        });
-      }
-
-      if (this.options.sseEnabled && method === "GET") {
-        const sessionId = await this.options.extractSessionId(event);
-
-        if (!sessionId) {
-          return new Response("Bad Request", { status: 400 });
+        try {
+          const singleResponse = await this.request(bodyParsed.data, event);
+          return Response.json(singleResponse);
+        } catch (error) {
+          if (JsonRpcError.isJsonRpcError(error)) {
+            return Response.json(
+              error.toJsonRpcResponse(bodyParsed.data.id ?? null),
+            );
+          }
+          return Response.json(
+            new JsonRpcError(-32603, "Internal error").toJsonRpcResponse(
+              bodyParsed.data.id ?? null,
+            ),
+          );
         }
+      },
+    });
 
-        const abortController = new AbortController();
-
-        const readable = new ReadableStream<Uint8Array>({
-          start: async (controller) => {
-            const session = this.openSession(sessionId);
-
-            for await (const ctl of session.consume(abortController.signal)) {
-              const { message, ack } = ctl;
-              controller.enqueue(
-                new EventEncoder().encode({
-                  data: JSON.stringify(message),
-                }),
-              );
-              ack();
-            }
-          },
-          cancel: () => {
-            abortController.abort();
-          },
-        });
-
-        return new Response(readable, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          },
-        });
-      }
-
-      return new Response("Method not allowed", { status: 405 });
-    } catch (error) {
-      console.error("Error processing JSON-RPC request:", error);
-      return new Response("Internal Server Error", { status: 500 });
-    }
+    return router.fetch(request);
   };
 
   /**
@@ -447,7 +527,8 @@ export class JsonRpcRouter {
    * Provides integration with the HTTP router system.
    */
   // @ts-ignore
-  [Router.customRoute]: RouterOptionsDef<any> = {
+  [Router.customRoute] = defaultRouteArguments({
+    method: "ALL",
     fetch: this.fetch,
-  };
+  });
 }
