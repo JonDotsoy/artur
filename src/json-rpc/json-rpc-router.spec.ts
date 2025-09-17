@@ -427,7 +427,7 @@ describe("JsonRpcRouter", () => {
     });
   });
 
-  test("test1", async () => {
+  test("should register method with input validation and enable method listing", async () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
@@ -437,7 +437,7 @@ describe("JsonRpcRouter", () => {
     dispatcher.enableMethodListing("rpc.discover");
   });
 
-  test("test2", async () => {
+  test("should discover registered methods with input validation schemas", async () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
@@ -474,7 +474,7 @@ describe("JsonRpcRouter", () => {
     });
   });
 
-  test("test3", async () => {
+  test("should discover registered methods with both input and output validation schemas", async () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
