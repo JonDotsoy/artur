@@ -11,7 +11,7 @@ import {
   beforeEach,
   afterEach,
 } from "bun:test";
-import fs from "fs";
+import fs, { readFileSync } from "fs";
 
 const shell = async (...args: ConstructorParameters<typeof ShellRequest>) => {
   const shellRequest = new ShellRequest(...args);
@@ -32,23 +32,39 @@ describe("Build", () => {
     });
   });
 
-  test("should successfully execute clean and build commands", async () => {
+  test("should execute clean and build commands and verify all exported files exist", async () => {
+    const workspacePath = new URL("../", import.meta.url);
+    const packageJsonPath = new URL("./package.json", workspacePath);
+
     await shell(
       `
         make clean build
       `,
-      { cwd: new URL("../", import.meta.url).pathname },
+      { cwd: workspacePath.pathname },
     );
 
-    const libPath = new URL("../lib/", import.meta.url);
-    const esmPath = new URL("./esm/", libPath);
-    const typesPath = new URL("./types/", libPath);
-    const indexEsmPath = new URL("./index.js", esmPath);
-    const indexDtsPath = new URL("./index.d.ts", typesPath);
+    const filesOnExports: any[] = [];
 
-    expect(fs.existsSync(esmPath.pathname)).toBe(true);
-    expect(fs.existsSync(typesPath.pathname)).toBe(true);
-    expect(fs.existsSync(indexEsmPath.pathname)).toBe(true);
-    expect(fs.existsSync(indexDtsPath.pathname)).toBe(true);
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+
+    filesOnExports.push(new URL(packageJson.module, workspacePath));
+    filesOnExports.push(new URL(packageJson.types, workspacePath));
+
+    if (
+      typeof packageJson.exports === "object" &&
+      packageJson.exports !== null
+    ) {
+      for (const exportEntry of Object.values(packageJson.exports)) {
+        if (typeof exportEntry === "object" && exportEntry !== null) {
+          for (const exportPath of Object.values(exportEntry)) {
+            filesOnExports.push(new URL(exportPath, workspacePath));
+          }
+        }
+      }
+    }
+
+    for (const filePath of filesOnExports) {
+      expect(fs.existsSync(filePath.pathname)).toBe(true);
+    }
   });
 });
