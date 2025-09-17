@@ -12,6 +12,7 @@ import {
 import { RequestReflect } from "./utils/request-reflect.js";
 import type { URLParams } from "./types/url-params.js";
 import { urlParamsSymbol } from "./constants/url-params-symbol.js";
+import { requestFromIncomingMessage } from "./utils/request-from-incoming-message.js";
 
 export const params = (request: Request) => {
   return RequestReflect.get<URLParams>(request, urlParamsSymbol) ?? {};
@@ -107,67 +108,33 @@ export class Router<E extends ErrorHandling = "default-catching"> {
     }
   };
 
+  /**
+   * HTTP request listener that processes incoming requests and sends responses.
+   *
+   * This method serves as a bridge between Node.js HTTP server and the fetch-based
+   * request handling system. It converts the incoming Node.js request to a standard
+   * Request object, processes it through the fetch method, and streams the response
+   * back to the client.
+   *
+   * @param req - The incoming HTTP request from Node.js server
+   * @param res - The HTTP response object used to send data back to the client
+   * @returns Promise that resolves when the response has been fully sent
+   *
+   * @example
+   * ```typescript
+   * const server = http.createServer(router.requestListener);
+   * server.listen(3000);
+   * ```
+   */
   requestListener = async (
     req: IncomingMessage,
     res: import("http").ServerResponse<import("http").IncomingMessage> & {
       req: import("http").IncomingMessage;
     },
   ) => {
-    const toReadable = (req: IncomingMessage) => {
-      const cleanupTasks = new Set<() => void>();
-      const cleanup = () => {
-        for (const cleanupTask of cleanupTasks) {
-          cleanupTask();
-          cleanupTasks.delete(cleanupTask);
-        }
-      };
+    const request = requestFromIncomingMessage(req);
 
-      if (!req.method || ["GET", "HEAD"].includes(req.method)) return undefined;
-      return new ReadableStream<Uint8Array>({
-        start: (controller) => {
-          const onData = (chunk: number[]) => {
-            controller.enqueue(new Uint8Array(chunk));
-          };
-          const onClose = () => {
-            controller.close();
-            cleanup();
-          };
-
-          req.addListener("data", onData);
-          req.addListener("close", onClose);
-
-          cleanupTasks.add(() => {
-            req.removeListener("data", onData);
-            req.removeListener("close", onClose);
-          });
-        },
-        cancel: (reason) => {
-          cleanup();
-        },
-      });
-    };
-    const url = new URL(
-      req.url ?? "/",
-      new URL(`http://${req.headers.host ?? "localhost"}/`),
-    ).toString();
-    const method = req.method;
-    const headers = new Headers();
-    for (const [headerName, headerValue] of Object.entries(req.headers)) {
-      if (typeof headerValue === "string") headers.set(headerName, headerValue);
-      if (Array.isArray(headerValue))
-        headerValue.forEach((headerValue) =>
-          headers.append(headerName, headerValue),
-        );
-    }
-    const request = new Request(url, {
-      method,
-      headers,
-      body: toReadable(req),
-      duplex: "half",
-    });
     const response = await this.fetch(request);
-
-    if (!(response instanceof Response)) return false;
 
     res.statusCode = response.status;
     res.statusMessage = response.statusText;
@@ -180,10 +147,6 @@ export class Router<E extends ErrorHandling = "default-catching"> {
       }
     }
     res.end();
-
-    return true;
-    // console.log("🚀 ~ Router ~ requestListener ~ url:", url)
-    // throw new Error("Method not implemented.");
   };
 
   [customRouteSymbol] = {
