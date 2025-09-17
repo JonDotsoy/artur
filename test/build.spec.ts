@@ -32,7 +32,7 @@ describe("Build", () => {
     });
   });
 
-  test("test1", async () => {
+  test("should successfully execute clean and build commands", async () => {
     await shell(
       `
         make clean build
