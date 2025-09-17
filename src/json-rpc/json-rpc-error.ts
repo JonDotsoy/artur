@@ -11,7 +11,7 @@ export class JsonRpcError<T = any> extends Error {
     this.data = data;
   }
 
-  toJsonRpcResponse(id: string | number): JsonRpcErrorResponse<T> {
+  toJsonRpcResponse(id: null | string | number): JsonRpcErrorResponse<T> {
     return {
       jsonrpc: "2.0",
       id,

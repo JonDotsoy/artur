@@ -1,4 +1,4 @@
-import { test, expect, mock, afterEach } from "bun:test";
+import { test, expect, mock, describe, afterEach } from "bun:test";
 import { Router, params } from "./router.js";
 import { disposeWithController } from "dispose-with-controller";
 import { describeErrorResponse } from "../utils/describeErrorResponse.js";
@@ -122,7 +122,7 @@ test("should make a router with a url-path string", async () => {
 test("should validate case on REAMDE file", async () => {
   const router = new Router();
 
-  router.route<"name">("GET", "/users/:name", {
+  router.route("GET", "/users/:name", {
     fetch: async (request) => {
       const { name } = params(request);
       return new Response(`hello ${name}`);
@@ -556,6 +556,49 @@ test("should return a Response or null when errorHandling returns a Response", a
   const e = await router.fetch(new Request("http://localhost"));
 
   expectTypeOf(e).toMatchTypeOf<null | Response>();
+});
+
+describe("Router basic route handling", () => {
+  test("should handle GET request to registered route", async () => {
+    const router = new Router();
+
+    router.route("/hello", {
+      fetch: async () => new Response("ok"),
+    });
+
+    const response = await router.fetch(new Request("http://localhost/hello"));
+
+    expect(response).toBeInstanceOf(Response);
+    expect(response).toMatchObject({ status: 200 });
+  });
+
+  test("should handle POST request to registered route", async () => {
+    const router = new Router();
+
+    router.route("/hello", {
+      fetch: async () => new Response("ok"),
+    });
+
+    const response = await router.fetch(
+      new Request("http://localhost/hello", { method: "POST" }),
+    );
+
+    expect(response).toBeInstanceOf(Response);
+    expect(response).toMatchObject({ status: 200 });
+  });
+
+  test("should return 404 for unregistered routes", async () => {
+    const router = new Router();
+
+    router.route("/hello", {
+      fetch: async () => new Response("ok"),
+    });
+
+    const response = await router.fetch(new Request("http://localhost/foo"));
+
+    expect(response).toBeInstanceOf(Response);
+    expect(response).toMatchObject({ status: 404 });
+  });
 });
 
 /**

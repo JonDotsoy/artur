@@ -1,7 +1,8 @@
 import type { Queue } from "@jondotsoy/utils-js/queue";
-import type { JsonRpcRouter } from "./json-rpc-router.js";
+import type { JsonRpcResponse, JsonRpcRouter } from "./json-rpc-router.js";
 import type { JsonRpcEvent } from "./types/json-rpc-event.js";
 import type { JsonRpcRequest } from "./types/json-rpc-request.js";
+import type { JsonRpcError } from "./json-rpc-error.js";
 
 /**
  * Represents a JSON-RPC session for handling requests and responses.
@@ -30,10 +31,23 @@ export class Session {
    * The response is automatically queued for consumption.
    * @param request - The JSON-RPC request to make
    * @param event - Optional event context for the request
+   * @deprecated Use the router's request method directly and handle responses as needed.
    */
   async request<P = any>(request: JsonRpcRequest<P>, event?: JsonRpcEvent) {
     const response = await this.#jsonRpcRouter.request(request, event).response;
-    await this.#queue.add(response);
+    if (response) await this.enqueueResponseOrError(response);
+  }
+
+  /**
+   * Enqueues a JSON-RPC response or error to be processed by the session queue.
+   *
+   * @param responseOrError - The JSON-RPC response object or error object to be added to the queue
+   * @returns A promise that resolves when the response or error has been successfully added to the queue
+   */
+  async enqueueResponseOrError(
+    responseOrError: JsonRpcResponse | JsonRpcError<any>,
+  ) {
+    await this.#queue.add(responseOrError);
   }
 
   /**

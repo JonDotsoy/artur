@@ -1,4 +1,12 @@
-import { test, expect, mock, beforeEach, afterEach, describe } from "bun:test";
+import {
+  test,
+  expect,
+  mock,
+  beforeEach,
+  afterEach,
+  describe,
+  beforeAll,
+} from "bun:test";
 import { JsonRpcRouter, type JsonRpcNotification } from "./json-rpc-router.js";
 import { JsonRpcError } from "./json-rpc-error.js";
 import { type JsonRpcResponse } from "./types/json-rpc-response.js";
@@ -6,6 +14,7 @@ import { type JsonRpcRequest } from "./types/json-rpc-request.js";
 import { Router } from "../http/router.js";
 import { z } from "zod";
 import { expectTypeOf } from "expect-type";
+import { customRouteSymbol } from "../http/constants/custom-options-symbol.js";
 
 describe("JsonRpcError", () => {
   test("should create error with code and message", () => {
@@ -427,7 +436,7 @@ describe("JsonRpcRouter", () => {
     });
   });
 
-  test("test1", async () => {
+  test("should register method with input validation and enable method listing", async () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
@@ -437,7 +446,7 @@ describe("JsonRpcRouter", () => {
     dispatcher.enableMethodListing("rpc.discover");
   });
 
-  test("test2", async () => {
+  test("should discover registered methods with input validation schemas", async () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
@@ -474,7 +483,7 @@ describe("JsonRpcRouter", () => {
     });
   });
 
-  test("test3", async () => {
+  test("should discover registered methods with both input and output validation schemas", async () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
@@ -670,6 +679,9 @@ describe("Session management", () => {
     const jsonRpcResponse = await dispatcher.fetch(
       new Request("http://localhost/json-rpc?json_rpc_token=1", {
         method: "GET",
+        headers: {
+          Accept: "text/event-stream",
+        },
       }),
     );
 
@@ -703,5 +715,86 @@ describe("Session management", () => {
     expect(push).toHaveBeenCalledWith(
       'data: {"id":1,"jsonrpc":"2.0","result":{"ok":true}}\n\n',
     );
+  });
+});
+
+describe("sse integration", () => {
+  let router: Router;
+
+  beforeAll(() => {
+    const jsonRpc = new JsonRpcRouter({ sseEnabled: true });
+
+    router = new Router();
+
+    router.route("/rpc", jsonRpc);
+  });
+
+  test("should return 400 for GET request without event-stream accept header", async () => {
+    const response = await router.fetch(
+      new Request("http://localhost/rpc?json_rpc_token=1", { method: "GET" }),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  test("should return 200 for GET request with event-stream accept header", async () => {
+    const abortController = new AbortController();
+    const response = await router.fetch(
+      new Request("http://localhost/rpc?json_rpc_token=1", {
+        method: "GET",
+        headers: { Accept: "text/event-stream" },
+        signal: abortController.signal,
+      }),
+    );
+    abortController.abort();
+    expect(response.status).toBe(200);
+  });
+
+  test("should return 200 for POST request with event-stream accept header", async () => {
+    const abortController = new AbortController();
+    const response = await router.fetch(
+      new Request("http://localhost/rpc?json_rpc_token=1", {
+        method: "POST",
+        headers: { Accept: "text/event-stream" },
+        signal: abortController.signal,
+      }),
+    );
+    abortController.abort();
+    expect(response.status).toBe(200);
+  });
+
+  test("should handle duplicate GET request with event-stream accept header", async () => {
+    const abortController = new AbortController();
+    const response = await router.fetch(
+      new Request("http://localhost/rpc?json_rpc_token=1", {
+        method: "GET",
+        headers: { Accept: "text/event-stream" },
+        signal: abortController.signal,
+      }),
+    );
+    abortController.abort();
+    expect(response.status).toBe(200);
+  });
+
+  test("should handle JSON-RPC POST request with application/json accept header", async () => {
+    const jsonRpcRequest: JsonRpcRequest = {
+      id: 1,
+      jsonrpc: "2.0",
+      method: "testMethod",
+      params: {},
+    };
+
+    const response = await router.fetch(
+      new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(jsonRpcRequest),
+      }),
+    );
+
+    const body = await response.text();
+    expect(response.status).toBe(200);
   });
 });

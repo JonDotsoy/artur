@@ -1,4 +1,4 @@
-import { customRouteSymbol } from "../http/constants/custom-options-symbol.js";
+import { Router } from "../http/router.js";
 import { defaultRouteArguments } from "../http/utils/parse-route-arguments.js";
 import { EventEncoder, type Event } from "./event-encoder/event-encoder.js";
 
@@ -173,14 +173,9 @@ export class EventSource {
    * Allows this stream to be used as a route handler in the HTTP router.
    * @returns An object with test and fetch methods for router compatibility
    */
-  [customRouteSymbol] = defaultRouteArguments({
-    method: "GET",
-    test: (request) => {
-      const accept = request.headers.get("accept");
-      const matchContentType = accept?.includes("text/event-stream") ?? false;
-
-      return matchContentType;
-    },
+  // @ts-ignore
+  [Router.customRoute] = defaultRouteArguments({
+    method: "ALL",
     fetch: this.fetch,
   });
 }

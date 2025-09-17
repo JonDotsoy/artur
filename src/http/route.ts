@@ -7,6 +7,28 @@ import type { RouteArguments } from "./utils/parse-route-arguments.js";
 import { RequestReflect } from "./utils/request-reflect.js";
 import { urlPatternFrom } from "./utils/url-pattern-from.js";
 
+const urlPatternMatch = (urlPattern: URLPattern, request: Request) => {
+  const urlPatternResult = urlPattern.exec(request.url);
+  if (urlPatternResult === null) return false;
+  const groupParams: URLParams = {
+    ...RequestReflect.get<URLParams>(request, urlParamsSymbol),
+    ...urlPatternResult.protocol.groups,
+    ...urlPatternResult.username.groups,
+    ...urlPatternResult.password.groups,
+    ...urlPatternResult.hostname.groups,
+    ...urlPatternResult.hash.groups,
+    ...urlPatternResult.pathname.groups,
+    0: undefined,
+  };
+  RequestReflect.set(request, urlParamsSymbol, groupParams);
+  return true;
+};
+
+const assetHTTPMethod = (method: string, methodExpected: string) => {
+  if (methodExpected === "ALL") return true;
+  return method.toUpperCase() === methodExpected;
+};
+
 /**
  * Represents an HTTP route with associated test and fetch logic.
  *
@@ -90,91 +112,64 @@ export class Route {
    * @see {@link Route.parse} - For actually parsing the validated parameters
    */
   static canParse(routeParameters: RouteArguments): boolean {
-    const existsFetch = !!routeParameters.fetch;
+    const existsFetch =
+      !!routeParameters.fetch && typeof routeParameters.fetch === "function";
     if (!existsFetch) return false;
     return true;
   }
 
   /**
-   * Parses route parameters into a Route instance with appropriate test, middleware, and fetch functions.
+   * Parses route parameters and creates a new Route instance.
    *
-   * This method converts flexible route arguments into a standardized Route object. If no custom
-   * test function is provided, it generates one based on the HTTP method and URL pattern.
+   * This method validates the provided route parameters and constructs a Route object
+   * with appropriate test functions, middlewares, and fetch handler. It builds assertion
+   * functions for HTTP method validation, URL pattern matching, and custom test logic.
    *
-   * @param routeParameters - The route arguments to parse into a Route
-   * @returns A new Route instance configured with the provided parameters
-   * @throws {Error} When the route parameters cannot be parsed (use `canParse` to check first)
+   * @param routeParameters - The route configuration object containing method, URL pattern,
+   *                         test function, fetch handler, and optional middlewares
+   * @returns A new Route instance configured with the parsed parameters
+   * @throws {Error} Throws an error if the route parameters cannot be parsed
    *
    * @example
    * ```typescript
-   * // Parse with custom test function
-   * const customRoute = Route.parse({
-   *   test: (req) => req.url.includes('/api'),
-   *   fetch: async () => Response.json({ api: true }),
-   *   middlewares: [corsMiddleware]
-   * });
-   *
-   * // Parse with URL pattern and method (auto-generates test)
-   * const patternRoute = Route.parse({
-   *   method: 'POST',
-   *   urlPattern: '/users/:id',
-   *   fetch: async (req) => Response.json({ userId: req.params.id })
-   * });
-   *
-   * // Parse minimal route (defaults to GET method)
-   * const simpleRoute = Route.parse({
-   *   urlPattern: '/health',
-   *   fetch: async () => Response.json({ status: 'ok' })
+   * const route = Route.parse({
+   *   method: 'GET',
+   *   urlPattern: '/api/users/:id',
+   *   fetch: (request) => new Response('Hello')
    * });
    * ```
-   *
-   * @remarks
-   * The parsing logic:
-   * - Uses custom test function if provided
-   * - Otherwise generates test from method (defaults to GET) and URL pattern
-   * - Supports "ALL" method to match any HTTP method
-   * - Extracts URL parameters and makes them available via RequestReflect
-   * - Applies middlewares in the order specified
    */
   static parse(routeParameters: RouteArguments): Route {
     if (!Route.canParse(routeParameters)) {
       throw new Error("Cannot parse route parameters");
     }
 
-    const test =
-      routeParameters.test ??
-      ((request: Request) => {
-        const urlPattern = routeParameters.urlPattern
-          ? urlPatternFrom(routeParameters.urlPattern)
-          : null;
-        const method = routeParameters.method;
+    const asserts: ((request: Request) => boolean | Promise<boolean>)[] = [];
 
-        const methodExpected = method?.toUpperCase() ?? "GET";
-        const isHttpMethodValid = (method: string, methodExpected: string) => {
-          if (methodExpected === "ALL") return true;
-          return method.toUpperCase() === methodExpected;
-        };
-        if (!isHttpMethodValid(request.method, methodExpected)) return false;
-        if (urlPattern === null || urlPattern === undefined) return false;
-        const m = (request: Request) => {
-          const urlPatternResult = urlPattern.exec(request.url);
-          if (urlPatternResult === null) return false;
-          const groupParams: URLParams = {
-            ...RequestReflect.get<URLParams>(request, urlParamsSymbol),
-            ...urlPatternResult.protocol.groups,
-            ...urlPatternResult.username.groups,
-            ...urlPatternResult.password.groups,
-            ...urlPatternResult.hostname.groups,
-            ...urlPatternResult.hash.groups,
-            ...urlPatternResult.pathname.groups,
-            0: undefined,
-          };
-          RequestReflect.set(request, urlParamsSymbol, groupParams);
-          return true;
-        };
-        if (!m(request)) return false;
-        return true;
-      });
+    if (routeParameters.method) {
+      asserts.push((request: Request) =>
+        assetHTTPMethod(request.method, routeParameters.method!),
+      );
+    }
+
+    if (routeParameters.urlPattern) {
+      const urlPattern = urlPatternFrom(routeParameters.urlPattern);
+      asserts.push((request: Request) => urlPatternMatch(urlPattern, request));
+    }
+
+    const t = routeParameters.test;
+
+    if (t) {
+      asserts.push((request) => t(request));
+    }
+
+    const test = async (request: Request) => {
+      for (const assert of asserts) {
+        const result = await assert(request);
+        if (!result) return false;
+      }
+      return true;
+    };
 
     const fetch = routeParameters.fetch!;
     const middlewares = routeParameters.middlewares ?? [];
