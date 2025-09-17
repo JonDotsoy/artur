@@ -38,6 +38,17 @@ describe("Build", () => {
         make clean build
       `,
       { cwd: new URL("../", import.meta.url).pathname },
-    ).verbose().exitCode;
+    );
+
+    const libPath = new URL("../lib/", import.meta.url);
+    const esmPath = new URL("./esm/", libPath);
+    const typesPath = new URL("./types/", libPath);
+    const indexEsmPath = new URL("./index.js", esmPath);
+    const indexDtsPath = new URL("./index.d.ts", typesPath);
+
+    expect(fs.existsSync(esmPath.pathname)).toBe(true);
+    expect(fs.existsSync(typesPath.pathname)).toBe(true);
+    expect(fs.existsSync(indexEsmPath.pathname)).toBe(true);
+    expect(fs.existsSync(indexDtsPath.pathname)).toBe(true);
   });
 });
