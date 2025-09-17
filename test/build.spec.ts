@@ -1,4 +1,8 @@
-import { Workspace, shell } from "@jondotsoy/utils-js/workspace";
+import {
+  Workspace,
+  shell as originalShell,
+  ShellRequest,
+} from "@jondotsoy/utils-js/workspace";
 import {
   describe,
   test,
@@ -8,6 +12,11 @@ import {
   afterEach,
 } from "bun:test";
 import fs from "fs";
+
+const shell = async (...args: ConstructorParameters<typeof ShellRequest>) => {
+  const shellRequest = new ShellRequest(...args);
+  await originalShell(shellRequest).verbose().exitCode;
+};
 
 describe("Build", () => {
   let workspace: Workspace;
