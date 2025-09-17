@@ -3,6 +3,7 @@ import type { Fetch } from "../types/fetch-type.js";
 import type { Middleware } from "../types/middleware.js";
 import type { TestRoute } from "../types/test-route-type.js";
 import { customRouteSymbol } from "../constants/custom-options-symbol.js";
+import type { Router } from "../router.js";
 
 type HTTPMethod =
   | "ALL"
@@ -20,6 +21,11 @@ type RouteArgumentOptions<T> = T & { middlewares?: Middleware[] };
 type HiddenOptions<T> = {
   [customRouteSymbol]?: T;
 } & T;
+
+export interface WithCustomRoute {
+  // @ts-ignore
+  [Router.customRoute]: RouteArguments;
+}
 
 /**
  * Configuration object that defines the parameters for creating HTTP routes.
@@ -237,6 +243,7 @@ namespace typeVerifier {
 
   export const isRouteArgumentsV0 = (value: unknown): value is [] =>
     isArray(value) && value.length === 0;
+
   export const isRouteArgumentsV1 = (
     value: unknown,
   ): value is [
@@ -249,13 +256,15 @@ namespace typeVerifier {
     isHTTPMethod(value[0]) &&
     isURLPattern(value[1]) &&
     isFunction(value[2]);
+
   export const isRouteArgumentsV2 = (
     value: unknown,
   ): value is [
     urlPattern: string | URLPattern,
     fetch: Fetch,
-    options?: RouteArgumentOptions<{ method?: HTTPMethod }>,
+    options?: HiddenOptions<RouteArgumentOptions<{ method?: HTTPMethod }>>,
   ] => isArray(value) && isURLPattern(value[0]) && isFunction(value[1]);
+
   export const isRouteArgumentsV3 = (
     value: unknown,
   ): value is [
@@ -263,6 +272,7 @@ namespace typeVerifier {
     fetch: Fetch,
     options?: RouteArgumentOptions<{}>,
   ] => isArray(value) && isFunction(value[0]) && isFunction(value[1]);
+
   export const isRouteArgumentsV4 = (
     value: unknown,
   ): value is [
@@ -274,6 +284,7 @@ namespace typeVerifier {
     isArray(value) &&
     isURLPattern(value[0]) &&
     (isFetchOptions(value[1]) || isHiddenFetchOptions(value[1]));
+
   export const isRouteArgumentsV5 = (
     value: unknown,
   ): value is [
@@ -287,6 +298,7 @@ namespace typeVerifier {
   ] =>
     isArray(value) &&
     (isFetchOptions(value[0]) || isHiddenFetchOptions(value[0]));
+
   export const isRouteArgumentsV6 = (
     value: unknown,
   ): value is [
@@ -314,13 +326,17 @@ const parseRouteArgumentsV1 = (
 const parseRouteArgumentsV2 = (
   urlPattern: string | URLPattern,
   fetch: Fetch,
-  options?: RouteArgumentOptions<{ method?: HTTPMethod }>,
-): RouteArguments => ({
-  urlPattern,
-  fetch,
-  method: options?.method,
-  middlewares: options?.middlewares,
-});
+  options?: HiddenOptions<RouteArgumentOptions<{ method?: HTTPMethod }>>,
+): RouteArguments => {
+  const { method, middlewares } = options?.[customRouteSymbol] ?? options ?? {};
+
+  return {
+    urlPattern,
+    fetch,
+    method,
+    middlewares,
+  };
+};
 const parseRouteArgumentsV3 = (
   test: TestRoute,
   fetch: Fetch,
@@ -344,16 +360,18 @@ const parseRouteArgumentsV4 = (
 const parseRouteArgumentsV5 = (
   options: HiddenOptions<
     RouteArgumentOptions<{
+      test?: TestRoute;
       urlPattern?: string | URLPattern;
       fetch: Fetch;
       method?: HTTPMethod;
     }>
   >,
 ): RouteArguments => {
-  const { urlPattern, fetch, method, middlewares } =
+  const { test, urlPattern, fetch, method, middlewares } =
     options[customRouteSymbol] ?? options;
 
   return {
+    test,
     urlPattern,
     fetch,
     method,
@@ -369,6 +387,21 @@ const parseRouteArgumentsV6 = (
   return {
     method,
     urlPattern,
+    fetch,
+    middlewares,
+  };
+};
+const parseRouteArgumentsV7 = (
+  options: HiddenOptions<
+    RouteArgumentOptions<{
+      test: TestRoute;
+      fetch: Fetch;
+    }>
+  >,
+): RouteArguments => {
+  const { test, fetch, middlewares } = options[customRouteSymbol] ?? options;
+  return {
+    test,
     fetch,
     middlewares,
   };
@@ -458,7 +491,7 @@ export interface route<T> {
   (
     method: HTTPMethod,
     urlPattern: string | URLPattern,
-    options: RouteArgumentOptions<{ fetch: Fetch }>,
+    options: WithCustomRoute | RouteArgumentOptions<{ fetch: Fetch }>,
   ): T;
 
   /**
@@ -516,7 +549,9 @@ export interface route<T> {
    */
   (
     urlPattern: string | URLPattern,
-    options: RouteArgumentOptions<{ fetch: Fetch; method?: HTTPMethod }>,
+    options:
+      | WithCustomRoute
+      | RouteArgumentOptions<{ fetch: Fetch; method?: HTTPMethod }>,
   ): T;
 
   /**
@@ -537,10 +572,13 @@ export interface route<T> {
    * ```
    */
   (
-    options: RouteArgumentOptions<{
-      urlPattern?: string | URLPattern;
-      fetch: Fetch;
-      method?: HTTPMethod;
-    }>,
+    options:
+      | WithCustomRoute
+      | RouteArgumentOptions<{
+          test?: TestRoute;
+          method?: HTTPMethod;
+          urlPattern?: string | URLPattern;
+          fetch: Fetch;
+        }>,
   ): T;
 }
