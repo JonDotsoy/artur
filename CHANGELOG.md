@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.10.0](https://github.com/JonDotsoy/artur/compare/artur-v1.9.2...artur-v1.10.0) (2025-09-17)
+
+
+### Features
+
+* add Zod schema for validating JSON-RPC notification structure ([61ca1ba](https://github.com/JonDotsoy/artur/commit/61ca1ba7c8feca90e5be20d7edcfd80e69180254))
+* allow 'id' parameter to be nullable in toJsonRpcResponse method ([a162629](https://github.com/JonDotsoy/artur/commit/a162629bf6cafb3c5242aba1acf3c2b75dc2c8b5))
+* enhance JSON-RPC request processing with parameter and result validation ([5fb1c5e](https://github.com/JonDotsoy/artur/commit/5fb1c5e8293147a2bd370d09bf188932bea64b7a))
+* enhance route argument parsing with support for hidden options and custom routes ([ec63ee4](https://github.com/JonDotsoy/artur/commit/ec63ee4e9408944d5783c683dcf783cbb0b669be))
+* implement requestFromIncomingMessage utility for handling HTTP requests ([845d36c](https://github.com/JonDotsoy/artur/commit/845d36cee7b3228653b3927d57e5e6d4218aaa22))
+* improve route parsing with enhanced URL pattern matching and HTTP method validation ([e9b07ec](https://github.com/JonDotsoy/artur/commit/e9b07ec32e0d7a0082a52b425f00d85ebd63631e))
+* make 'id' field nullable in JsonRpcErrorResponse interface ([f1131ec](https://github.com/JonDotsoy/artur/commit/f1131ec96ce7adfc9efedeea651689948e77bbf2))
+* make 'id' field optional in JSON-RPC request schema ([c1939e9](https://github.com/JonDotsoy/artur/commit/c1939e97ab2c171ba067508efbb4d08a28cb8f56))
+* refactor response handling in Session class to enqueue responses or errors ([f66457a](https://github.com/JonDotsoy/artur/commit/f66457aace7013c315b22115f33db00edf112de0))
+* simplify request handling by utilizing requestFromIncomingMessage utility ([decb447](https://github.com/JonDotsoy/artur/commit/decb44707721e29706bafdb642212be5206f3583))
+* update EventSource to integrate with HTTP router using customRoute ([d3b6f64](https://github.com/JonDotsoy/artur/commit/d3b6f643c786fb7a47dc2b17ed22c7d88b44d248))
+
 ## [1.9.2](https://github.com/JonDotsoy/artur/compare/artur-v1.9.1...artur-v1.9.2) (2025-09-12)
 
 
