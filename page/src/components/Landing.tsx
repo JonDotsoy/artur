@@ -1,5 +1,5 @@
-import { Button } from "~/components/ui/button";
-import { CodeTabs } from "~/components/animate-ui/components/animate/code-tabs";
+import { Button } from "@/components/ui/button";
+import { CodeTabs } from "@/components/animate-ui/components/animate/code-tabs";
 import {
   Tabs,
   TabsList,
@@ -11,7 +11,7 @@ import {
   Code,
   CodeBlock,
   CodeHeader,
-} from "~/components/animate-ui/components/animate/code";
+} from "@/components/animate-ui/components/animate/code";
 import { Typescript } from "./icons/typescript";
 
 const httpRouterCode = `import { Router } from "artur";
