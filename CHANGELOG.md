@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/JonDotsoy/artur/compare/artur-v1.10.0...artur-v1.10.1) (2025-09-18)
+
+
+### Bug Fixes
+
+* handle potential error when closing controller in readableFromIncomingMessage ([956457a](https://github.com/JonDotsoy/artur/commit/956457ab79b0db394355450f638a77b6a44f8763))
+
 ## [1.10.0](https://github.com/JonDotsoy/artur/compare/artur-v1.9.2...artur-v1.10.0) (2025-09-17)
 
 
