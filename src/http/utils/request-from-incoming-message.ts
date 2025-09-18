@@ -13,7 +13,9 @@ const readableFromIncomingMessage = (req: http.IncomingMessage) => {
         controller.enqueue(new Uint8Array(chunk));
       };
       listenerClose = () => {
-        controller.close();
+        try {
+          controller.close();
+        } catch {}
       };
       listenerError = (err: Error) => {
         controller.error(err);
