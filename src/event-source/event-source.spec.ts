@@ -149,8 +149,8 @@ describe("SentEvent", () => {
 
     expect(readable).not.toBeNull();
 
-    const data = await readable.text();
-    expect(data).toBe("");
+    const data = await readable.toArray();
+    expect(data).toEqual([]);
   });
 
   test("should create readable stream when create function is provided", async () => {

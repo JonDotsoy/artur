@@ -102,7 +102,7 @@ describe("Package Compatibility Tests", () => {
       const addScript = async (name: string, content: string) => {
         envs.APP_SCRIPT = btoa(content);
 
-        await run(`echo $APP_SCRIPT | base64 -D > "${name}"`);
+        await run(`echo $APP_SCRIPT | base64 -d > "${name}"`);
       };
 
       await addScript("app_1.js", `import "artur";`);
@@ -202,7 +202,7 @@ describe("Package Compatibility Tests", () => {
       const addScript = async (name: string, content: string) => {
         envs.APP_SCRIPT = btoa(content);
 
-        await run(`echo $APP_SCRIPT | base64 -D > "${name}"`);
+        await run(`echo $APP_SCRIPT | base64 -d > "${name}"`);
       };
 
       await addScript("app_1.js", `require("artur");`);
@@ -280,7 +280,7 @@ describe("Package Compatibility Tests", () => {
       const addScript = async (name: string, content: string) => {
         envs.APP_SCRIPT = btoa(content);
 
-        await run(`echo $APP_SCRIPT | base64 -D > "${name}"`);
+        await run(`echo $APP_SCRIPT | base64 -d > "${name}"`);
       };
 
       await addScript("app_1.js", `import "artur";`);
