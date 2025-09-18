@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/cache@v4
+        with:
+          path: ~/.asdf
+          key: ${{ runner.os }}-asdf
+      - uses: asdf-vm/actions/install@v4
+        with:
+          tool_versions: |
+            bun 1.2.4
+            nodejs 24.8.0
+      - run: |
+          asdf install nodejs 18.20.8
+          asdf install nodejs 22.19.0
+          asdf install nodejs 24.8.0
+          asdf install nodejs 18.20.8
+          asdf install nodejs 22.19.0
+          asdf install nodejs 24.8.0
+          asdf install bun 1.2.21
+      - run: bun install
+      - run: bun lint
+      - run: bun test

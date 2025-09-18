@@ -64,6 +64,7 @@
   },
   "scripts": {
     "prepack": "make build",
+    "lint": "prettier -c .",
     "fmt": "prettier -w ."
   },
   "files": [
