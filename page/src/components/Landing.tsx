@@ -1,0 +1,282 @@
+import { Button } from "~/components/ui/button";
+import { CodeTabs } from "~/components/animate-ui/components/animate/code-tabs";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContents,
+  TabsContent,
+} from "./animate-ui/components/animate/tabs";
+import {
+  Code,
+  CodeBlock,
+  CodeHeader,
+} from "~/components/animate-ui/components/animate/code";
+import { Typescript } from "./icons/typescript";
+
+const httpRouterCode = `import { Router } from "artur";
+
+const router = new Router();
+
+router.use("GET", "/hello", {
+  fetch: () => new Response("Hello world"),
+});
+`;
+
+const jsonRpcRouterCode = `import { JsonRpcRouter, Router } from "artur";
+
+const rpc = new JsonRpcRouter();
+
+// Register RPC methods using the method API
+rpc.method("add", (params: { a: number; b: number }) => {
+  return params.a + params.b;
+});
+
+rpc.method("greet", (params: { name: string }) => {
+  return \`Hello, \${params.name}!\`;
+});
+
+// Integrate with Router
+const router = new Router();
+router.route("POST", "/api/rpc", rpc);
+`;
+
+const sseRouterCode = `import { EventSource, Router } from "artur";
+
+// Simple notification system
+const notifications = new EventSource({
+  start: async (request) => {
+    return new EventsReadableStream({
+      start(controller) {
+        // Send welcome message
+        controller.enqueue({
+          id: "welcome",
+          event: "notification",
+          data: JSON.stringify({
+            type: "info",
+            message: "Welcome to the notification system!",
+          }),
+        });
+
+        // Simulate notifications
+        const notifications = [
+          { type: "success", message: "Task completed successfully" },
+          { type: "warning", message: "System maintenance scheduled" },
+          { type: "error", message: "Connection issue detected" },
+        ];
+
+        let index = 0;
+        const interval = setInterval(() => {
+          if (index < notifications.length) {
+            controller.enqueue({
+              id: \`notification-\${index}\`,
+              event: "notification",
+              data: JSON.stringify(notifications[index]),
+              retry: 3000, // Retry connection after 3 seconds if dropped
+            });
+            index++;
+          } else {
+            controller.close();
+          }
+        }, 5000);
+
+        // Note: Cleanup should be handled when the stream is closed or cancelled
+      },
+    });
+  },
+});
+
+const router = new Router();
+router.route("/notifications", notifications);
+`;
+
+const bunServerCode = `import { serve } from "bun";
+import { router } from "./app.ts";
+
+serve({
+  port: 3000,
+  fetch: (request) => router.fetch(request),
+});
+
+console.log("Server running on http://localhost:3000");
+`;
+
+const nodeServerCode = `import { createServer } from "node:http";
+import { router } from "./app.ts";
+
+const server = createServer((req, res) => {
+  router.requestListener(req, res);
+});
+
+server.listen(3000, "127.0.0.1", () => {
+  console.log("Server running on http://127.0.0.1:3000");
+});
+`;
+
+export default function Landing() {
+  return (
+    <div>
+      <header className="border-b border-border/40 bg-white">
+        <div className="container mx-auto px-6 py-4">
+          <nav className="grid grid-cols-[auto_1fr_auto_1fr_auto] gap-3 items-center">
+            <div className="col-start-1">
+              <span className="uppercase font-bold">Artur</span>
+            </div>
+            {/* <div className="col-start-3 grid grid-cols-[repeat(3,auto)] gap-6 justify-center max-md:hidden">
+            <a href="#overview">Overview</a>
+            <a href="#installation">Installation</a>
+            <a href="#usage">Usage</a>
+          </div> */}
+            <div className="col-start-5">
+              <Button variant={"outline"}>
+                <a href="https://github.com/JonDotsoy/artur#readme">
+                  Documentation
+                </a>
+              </Button>
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero section */}
+      <section className="bg-white">
+        <div className="container mx-auto px-6 py-20 flex flex-col gap-6">
+          <h1 className="text-4xl font-bold text-center">
+            Infrastructure-Agnostic Web Framework
+          </h1>
+          <p className="text-center text-2xl">
+            Lightweight, fast, and runtime-independent router for Node.js, Bun,
+            and beyond. Built on Web API standards with URLPattern routing,
+            middleware support, and real-time capabilities.
+          </p>
+          <div>
+            <CodeTabs
+              lang="shell"
+              className="max-w-md mx-auto"
+              codes={{
+                npm: "npm install artur",
+                bun: "bun add artur",
+                pnpm: "pnpm add artur",
+                yarn: "yarn add artur",
+              }}
+            ></CodeTabs>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-gray-100" id="overview">
+        <div className="container mx-auto px-6 py-20 flex flex-col gap-6">
+          <h2 className="text-center text-3xl font-bold">Usage Examples</h2>
+          <p className="text-center">
+            Discover how Artur's flexible routing system works across different
+            runtimes and use cases. From simple HTTP endpoints to real-time
+            JSON-RPC APIs and Server-Sent Events streaming:
+          </p>
+          <Tabs defaultValue={"http-router"} className="w-full">
+            <TabsList>
+              <TabsTrigger value="http-router">HTTP Router</TabsTrigger>
+              <TabsTrigger value="json-rpc-router">JSON-RPC Router</TabsTrigger>
+              <TabsTrigger value="sse-router">
+                Server Sent Events Router
+              </TabsTrigger>
+            </TabsList>
+            <TabsContents>
+              <TabsContent value="http-router">
+                <Code code={httpRouterCode}>
+                  <CodeHeader copyButton>app.ts</CodeHeader>
+                  <CodeBlock lang={"typescript"}></CodeBlock>
+                </Code>
+              </TabsContent>
+              <TabsContent value="json-rpc-router">
+                <Code code={jsonRpcRouterCode}>
+                  <CodeHeader copyButton>app.ts</CodeHeader>
+                  <CodeBlock lang={"typescript"}></CodeBlock>
+                </Code>
+              </TabsContent>
+              <TabsContent value="sse-router">
+                <Code code={sseRouterCode}>
+                  <CodeHeader copyButton>app.ts</CodeHeader>
+                  <CodeBlock lang={"typescript"}></CodeBlock>
+                </Code>
+              </TabsContent>
+            </TabsContents>
+          </Tabs>
+
+          <h3 className="text-center text-2xl font-bold mt-16 mb-4">
+            Server Setup
+          </h3>
+          <p className="text-center">
+            Get your Artur router running in production with Node.js or Bun.sh.
+            Both runtimes provide excellent performance with minimal setup:
+          </p>
+          <Tabs defaultValue={"bun-server"} className="w-full">
+            <TabsList>
+              <TabsTrigger value="bun-server">Bun Server</TabsTrigger>
+              <TabsTrigger value="node-server">Node.js Server</TabsTrigger>
+            </TabsList>
+            <TabsContents>
+              <TabsContent value="bun-server">
+                <Code code={bunServerCode}>
+                  <CodeHeader copyButton>server.ts</CodeHeader>
+                  <CodeBlock lang={"typescript"}></CodeBlock>
+                </Code>
+              </TabsContent>
+              <TabsContent value="node-server">
+                <Code code={nodeServerCode}>
+                  <CodeHeader copyButton>server.ts</CodeHeader>
+                  <CodeBlock lang={"typescript"}></CodeBlock>
+                </Code>
+              </TabsContent>
+            </TabsContents>
+          </Tabs>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-border/40">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-black text-white px-2 py-1 rounded text-sm font-bold">
+                A
+              </div>
+              <span className="font-semibold text-lg">Artur</span>
+            </div>
+            <div className="flex items-center gap-6 text-gray-600">
+              <a
+                href="https://github.com/JonDotsoy/artur"
+                className="flex items-center gap-2 hover:text-gray-900 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
+                </svg>
+                GitHub
+              </a>
+              <a
+                href="https://www.npmjs.com/package/artur"
+                className="flex items-center gap-2 hover:text-gray-900 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0H1.763zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z" />
+                </svg>
+                npm
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
