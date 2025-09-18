@@ -9,15 +9,12 @@ import react from "@astrojs/react";
 export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
-  },
-
-  integrations: [react()],
-
-  vite: {
     resolve: {
       alias: {
         "@": fileURLToPath(new URL('./src', import.meta.url)),
       },
     }
-  }
+  },
+
+  integrations: [react()],
 });
