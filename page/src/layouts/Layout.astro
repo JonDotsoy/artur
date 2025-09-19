@@ -6,10 +6,64 @@ import "../styles/global.css";
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Astro Basics</title>
+    
+    <!-- Primary Meta Tags -->
+    <title>Artur - Infrastructure-Agnostic Web Framework</title>
+    <meta name="title" content="Artur - Infrastructure-Agnostic Web Framework" />
+    <meta name="description" content="Lightweight, fast, and runtime-independent router for Node.js, Bun, and beyond. Built on Web API standards with URLPattern routing, middleware support, JSON-RPC 2.0, and Server-Sent Events." />
+    <meta name="keywords" content="web framework, router, nodejs, bun, typescript, urlpattern, middleware, json-rpc, server-sent events, infrastructure-agnostic" />
+    <meta name="author" content="JonDotsoy" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://jondotsoy.github.io/artur/" />
+    <meta property="og:title" content="Artur - Infrastructure-Agnostic Web Framework" />
+    <meta property="og:description" content="Lightweight, fast, and runtime-independent router for Node.js, Bun, and beyond. Built on Web API standards with URLPattern routing, middleware support, JSON-RPC 2.0, and Server-Sent Events." />
+    <meta property="og:image" content="https://jondotsoy.github.io/artur/og-image.png" />
+    <meta property="og:site_name" content="Artur Framework" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://jondotsoy.github.io/artur/" />
+    <meta property="twitter:title" content="Artur - Infrastructure-Agnostic Web Framework" />
+    <meta property="twitter:description" content="Lightweight, fast, and runtime-independent router for Node.js, Bun, and beyond. Built on Web API standards with URLPattern routing, middleware support, JSON-RPC 2.0, and Server-Sent Events." />
+    <meta property="twitter:image" content="https://jondotsoy.github.io/artur/og-image.png" />
+    <meta property="twitter:creator" content="@JonDotsoy" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="theme-color" content="#000000" />
+    <meta name="msapplication-TileColor" content="#000000" />
+    <link rel="canonical" href="https://jondotsoy.github.io/artur/" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Artur",
+      "description": "Infrastructure-agnostic web framework for Node.js and Bun with URLPattern routing",
+      "applicationCategory": "WebApplication",
+      "operatingSystem": "Cross-platform",
+      "programmingLanguage": "TypeScript",
+      "author": {
+        "@type": "Person",
+        "name": "JonDotsoy",
+        "url": "https://github.com/JonDotsoy"
+      },
+      "downloadUrl": "https://www.npmjs.com/package/artur",
+      "codeRepository": "https://github.com/JonDotsoy/artur",
+      "license": "https://github.com/JonDotsoy/artur/blob/main/LICENSE",
+      "keywords": ["web framework", "router", "nodejs", "bun", "typescript", "urlpattern", "middleware"],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
   </head>
   <body>
     <slot />
