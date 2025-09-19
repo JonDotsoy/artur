@@ -25,11 +25,11 @@ export default function Landing() {
             <a href="#usage">Usage</a>
           </div> */}
             <div className="col-start-5">
-              <Button variant={"outline"}>
-                <a href="https://github.com/JonDotsoy/artur#readme">
+              <a href="https://github.com/JonDotsoy/artur#readme">
+                <Button variant={"outline"}>
                   Documentation
-                </a>
-              </Button>
+                </Button>
+              </a>
             </div>
           </nav>
         </div>
