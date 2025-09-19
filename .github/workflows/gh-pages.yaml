@@ -19,7 +19,8 @@ jobs:
         with:
           sparse-checkout: |
             page/
-      - uses: oven-sh/setup-bun@v2
+          path: page
+      - uses: oven-sh/setup-bun@v2  
       - run: bun install
       - run: bun --bun run build
       - uses: actions/upload-pages-artifact@v3
