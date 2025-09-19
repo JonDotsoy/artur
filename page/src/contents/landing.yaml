@@ -1,0 +1,101 @@
+lang: es
+
+hero:
+  title: Artur — Router minimalista, estándar y veloz para HTTP
+  lead: Crea APIs y servicios HTTP con **cero fricción**. Basado en **URLPattern** y Web APIs, corre igual en **Node.js** y **Bun**, con **middleware**, **JSON-RPC 2.0** y **SSE** listos para producción. **Sin lock-in. Sin bloat. Solo lo esencial.**
+  cta:
+    install:
+      npm: npm install artur
+      bun: bun add artur
+      pnpm: pnpm add artur
+      yarn: yarn add artur
+
+usage:
+  title: Enruta en segundos, escala sin fricción
+  lead: Con **Artur** puedes registrar rutas y middleware de forma declarativa, usando solo estándares web como `URLPattern`, `Request` y `Response`.
+
+  basic: 
+    title: Rutas básicas
+
+    description: Registra rutas con métodos HTTP, cadenas, expresiones regulares, funciones de prueba o `URLPattern`.
+    
+    code(ts): |
+      import { Router } from "artur";
+
+      const router = new Router();
+
+      // GET /hello
+      router.route("/hello", () => new Response("Hello world"));
+
+      // POST /api/users
+      router.route("POST", "/api/users", async () =>
+        new Response("User created", { status: 201 })
+      );
+
+  advance:
+    title: Patrones avanzados
+
+    description: Usa funciones de prueba o `URLPattern` para patrones más complejos y flexibles.
+
+    code(ts): |
+      // Con función test
+      router.route(
+        (req) => req.headers.get("content-type") === "application/json",
+        async () => new Response("JSON handler")
+      );
+
+      // Con URLPattern nativo
+      router.route("GET", new URLPattern({ pathname: "/users/:id(\\d+)" }), {
+        fetch: async () => new Response("User by ID"),
+      });
+
+  middleware:
+    title: Middleware simple y flexible
+
+    description: Crea middleware reutilizables para autenticación, logging, manejo de errores y más.
+
+    code(ts): |
+      const auth = (next) => async (req) => {
+        // Verificación...
+        return next(req);
+      };
+
+      const router = new Router({ middlewares: [auth] });
+      router.route("POST", "/secure", async () => Response.json({ ok: true }));
+
+  jsonrpc:
+    title: JSON-RPC 2.0 listo para usar
+
+    description: Registra métodos JSON-RPC con validación integrada usando `zod`.
+
+    code(ts): |
+      import { JsonRpcRouter } from "artur";
+      import { z } from "zod";
+
+      const rpc = new JsonRpcRouter();
+
+      rpc.method("add",
+        (p) => p.a + p.b,
+        { inputValidation: z.object({ a: z.number(), b: z.number() }) }
+      );
+
+      router.route("/api/rpc", rpc);
+
+  sse:
+    title: Servidor de eventos (SSE) para tiempo real
+
+    description: Crea flujos de eventos con `EventSource` y `EventsReadableStream`.
+
+    code(ts): |
+      import { EventSource, EventsReadableStream } from "artur";
+
+      const events = new EventSource({
+        start: async () =>
+          new EventsReadableStream({
+            start(controller) {
+              controller.enqueue({ event: "connected", data: "ok" });
+            },
+          }),
+      });
+
+      router.route("GET", "/events", events);

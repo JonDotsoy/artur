@@ -1,18 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { CodeTabs } from "@/components/animate-ui/components/animate/code-tabs";
 import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContents,
-  TabsContent,
-} from "./animate-ui/components/animate/tabs";
-import {
   Code,
   CodeBlock,
   CodeHeader,
 } from "@/components/animate-ui/components/animate/code";
-import { Typescript } from "./icons/typescript";
+// @ts-ignore
+import content from "../contents/landing.yaml";
+// import {from "./markdown.tsx";
+import Markdown, { MarkdownAsync } from "react-markdown";
 
 const httpRouterCode = `import { Router } from "artur";
 
@@ -142,23 +138,20 @@ export default function Landing() {
       <section className="bg-white">
         <div className="container mx-auto px-6 py-20 flex flex-col gap-6">
           <h1 className="text-4xl font-bold text-center">
-            Infrastructure-Agnostic Web Framework
+            <Markdown>
+              {content.hero.title}
+            </Markdown>
           </h1>
           <p className="text-center text-2xl">
-            Lightweight, fast, and runtime-independent router for Node.js, Bun,
-            and beyond. Built on Web API standards with URLPattern routing,
-            middleware support, and real-time capabilities.
+            <Markdown>
+              {content.hero.lead}
+            </Markdown>
           </p>
           <div>
             <CodeTabs
               lang="shell"
               className="max-w-md mx-auto"
-              codes={{
-                npm: "npm install artur",
-                bun: "bun add artur",
-                pnpm: "pnpm add artur",
-                yarn: "yarn add artur",
-              }}
+              codes={content.hero.cta.install}
             ></CodeTabs>
           </div>
         </div>
@@ -166,69 +159,64 @@ export default function Landing() {
 
       <section className="bg-gray-100" id="overview">
         <div className="container mx-auto px-6 py-20 flex flex-col gap-6">
-          <h2 className="text-center text-3xl font-bold">Usage Examples</h2>
-          <p className="text-center">
-            Discover how Artur's flexible routing system works across different
-            runtimes and use cases. From simple HTTP endpoints to real-time
-            JSON-RPC APIs and Server-Sent Events streaming:
-          </p>
-          <Tabs defaultValue={"http-router"} className="w-full">
-            <TabsList>
-              <TabsTrigger value="http-router">HTTP Router</TabsTrigger>
-              <TabsTrigger value="json-rpc-router">JSON-RPC Router</TabsTrigger>
-              <TabsTrigger value="sse-router">
-                Server Sent Events Router
-              </TabsTrigger>
-            </TabsList>
-            <TabsContents>
-              <TabsContent value="http-router">
-                <Code code={httpRouterCode}>
-                  <CodeHeader copyButton>app.ts</CodeHeader>
-                  <CodeBlock lang={"typescript"}></CodeBlock>
-                </Code>
-              </TabsContent>
-              <TabsContent value="json-rpc-router">
-                <Code code={jsonRpcRouterCode}>
-                  <CodeHeader copyButton>app.ts</CodeHeader>
-                  <CodeBlock lang={"typescript"}></CodeBlock>
-                </Code>
-              </TabsContent>
-              <TabsContent value="sse-router">
-                <Code code={sseRouterCode}>
-                  <CodeHeader copyButton>app.ts</CodeHeader>
-                  <CodeBlock lang={"typescript"}></CodeBlock>
-                </Code>
-              </TabsContent>
-            </TabsContents>
-          </Tabs>
+          <h2 className="text-center text-3xl font-bold"><Markdown>{content.usage.title}</Markdown></h2>
+          <p className="text-center"><Markdown>{content.usage.lead}</Markdown></p>
 
-          <h3 className="text-center text-2xl font-bold mt-16 mb-4">
-            Server Setup
-          </h3>
-          <p className="text-center">
-            Get your Artur router running in production with Node.js or Bun.sh.
-            Both runtimes provide excellent performance with minimal setup:
-          </p>
-          <Tabs defaultValue={"bun-server"} className="w-full">
-            <TabsList>
-              <TabsTrigger value="bun-server">Bun Server</TabsTrigger>
-              <TabsTrigger value="node-server">Node.js Server</TabsTrigger>
-            </TabsList>
-            <TabsContents>
-              <TabsContent value="bun-server">
-                <Code code={bunServerCode}>
-                  <CodeHeader copyButton>server.ts</CodeHeader>
-                  <CodeBlock lang={"typescript"}></CodeBlock>
-                </Code>
-              </TabsContent>
-              <TabsContent value="node-server">
-                <Code code={nodeServerCode}>
-                  <CodeHeader copyButton>server.ts</CodeHeader>
-                  <CodeBlock lang={"typescript"}></CodeBlock>
-                </Code>
-              </TabsContent>
-            </TabsContents>
-          </Tabs>
+          <h3 className="text-center text-2xl font-bold mt-16 mb-4"><Markdown>{content.usage.basic.title}</Markdown></h3>
+          <p className="text-center"><Markdown>{content.usage.basic.description}</Markdown></p>
+          <Code code={content.usage.basic["code(ts)"]} lang="typescript" >
+            <CodeHeader>app.ts</CodeHeader>
+            <CodeBlock
+              lang="typescript"
+              writing
+              duration={100}
+            />
+          </Code>
+
+          <h3 className="text-center text-2xl font-bold mt-16 mb-4"><Markdown>{content.usage.advance.title}</Markdown></h3>
+          <p className="text-center"><Markdown>{content.usage.advance.description}</Markdown></p>
+          <Code code={content.usage.advance["code(ts)"]} lang="typescript" >
+            <CodeHeader>app.ts</CodeHeader>
+            <CodeBlock
+              lang="typescript"
+              writing
+              duration={100}
+            />
+          </Code>
+
+          <h3 className="text-center text-2xl font-bold mt-16 mb-4"><Markdown>{content.usage.middleware.title}</Markdown></h3>
+          <p className="text-center"><Markdown>{content.usage.middleware.description}</Markdown></p>
+          <Code code={content.usage.middleware["code(ts)"]} lang="typescript" >
+            <CodeHeader>app.ts</CodeHeader>
+            <CodeBlock
+              lang="typescript"
+              writing
+              duration={100}
+            />
+          </Code>
+
+          <h3 className="text-center text-2xl font-bold mt-16 mb-4"><Markdown>{content.usage.jsonrpc.title}</Markdown></h3>
+          <p className="text-center"><Markdown>{content.usage.jsonrpc.description}</Markdown></p>
+          <Code code={content.usage.jsonrpc["code(ts)"]} lang="typescript" >
+            <CodeHeader>app.ts</CodeHeader>
+            <CodeBlock
+              lang="typescript"
+              writing
+              duration={100}
+            />
+          </Code>
+
+          <h3 className="text-center text-2xl font-bold mt-16 mb-4"><Markdown>{content.usage.sse.title}</Markdown></h3>
+          <p className="text-center"><Markdown>{content.usage.sse.description}</Markdown></p>
+          <Code code={content.usage.sse["code(ts)"]} lang="typescript" >
+            <CodeHeader>app.ts</CodeHeader>
+            <CodeBlock
+              lang="typescript"
+              writing
+              duration={100}
+            />
+          </Code>
+
         </div>
       </section>
 
