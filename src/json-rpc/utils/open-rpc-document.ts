@@ -2,8 +2,8 @@
  * OpenRPC Specification v1.3.2 TypeScript Interfaces
  * Based on https://spec.open-rpc.org/
  */
-import { JsonRpcRouter } from "../json-rpc-router";
-import { z, toJSONSchema } from "zod";
+import { JsonRpcRouter } from "../json-rpc-router.js";
+import { toJSONSchema } from "zod";
 
 /**
  * Contact information for the exposed API.
