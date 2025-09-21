@@ -466,19 +466,8 @@ describe("JsonRpcRouter", () => {
       id: 1,
       jsonrpc: "2.0",
       result: {
-        methods: [
-          {
-            name: "testMethod",
-            params: {
-              type: "object",
-              properties: {
-                name: { type: "string" },
-              },
-              required: ["name"],
-              additionalProperties: false,
-            },
-          },
-        ],
+        info: {},
+        methods: [{ name: "testMethod" }],
       },
     });
   });
@@ -504,25 +493,10 @@ describe("JsonRpcRouter", () => {
       id: 1,
       jsonrpc: "2.0",
       result: {
+        info: {},
         methods: [
           {
             name: "testMethod",
-            params: {
-              type: "object",
-              properties: {
-                name: { type: "string" },
-              },
-              required: ["name"],
-              additionalProperties: false,
-            },
-            result: {
-              type: "object",
-              properties: {
-                ok: { type: "boolean" },
-              },
-              required: ["ok"],
-              additionalProperties: false,
-            },
           },
         ],
       },

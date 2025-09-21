@@ -1,16 +1,15 @@
 import type { ExtractValidationType } from "./types/extract-validation-type.js";
-import type { Validation } from "./types/validation.js";
+import type { ParamsValidation, Validation } from "./types/validation.js";
 import type { JsonRpcHandler } from "./types/json-rpc-handler.js";
 import type { JsonRpcEvent } from "./types/json-rpc-event.js";
 import type { JsonRpcResponse } from "./types/json-rpc-response.js";
 import type { JsonRpcRequest } from "./types/json-rpc-request.js";
 import type { JsonRpcNotification } from "./types/json-rpc-notification.js";
 import { JsonRpcError } from "./json-rpc-error.js";
-import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
 import { Queue } from "@jondotsoy/utils-js/queue";
 import { bodyRequest } from "./schemas/body-request.js";
-import type { JsonRpcDispatcherOptions } from "./types/json-rpc-dispatcher-options.js";
+import type { JsonRpcRouterOptions } from "./types/json-rpc-router-options.js";
 import { defaultExtractSessionId } from "./default-extract-session-id.js";
 import { sessionMemoryStore } from "./create-session-memory-store.1.js";
 import { Session } from "./session.js";
@@ -19,6 +18,7 @@ import {
   EventSource,
   EventsReadableStream,
 } from "../event-source/event-source.js";
+import { fromJsonRpcRouter } from "./utils/open-rpc-document.js";
 
 export type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
 export type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
@@ -27,7 +27,7 @@ export type { JsonRpcRequest } from "./types/json-rpc-request.js";
 export type { JsonRpcNotification } from "./types/json-rpc-notification.js";
 
 /**
- * Main JSON-RPC dispatcher class.
+ * Main JSON-RPC router class.
  * Handles JSON-RPC 2.0 requests, method registration, session management,
  * and optional Server-Sent Events (SSE) support for real-time communication.
  */
@@ -41,17 +41,17 @@ export class JsonRpcRouter {
   /** Map of method names to their parameter validation schemas */
   private paramsValidations = new Map<
     string,
-    { input?: Validation<any>; output?: Validation<any> }
+    { input?: ParamsValidation<any>; output?: Validation<any> }
   >();
 
-  /** Configuration options for the dispatcher */
-  private options: JsonRpcDispatcherOptions;
+  /** Configuration options for the router */
+  readonly options: JsonRpcRouterOptions;
 
   /**
-   * Creates a new JSON-RPC dispatcher.
+   * Creates a new JSON-RPC router.
    * @param options - Optional configuration options
    */
-  constructor(options?: Partial<JsonRpcDispatcherOptions>) {
+  constructor(options?: Partial<JsonRpcRouterOptions>) {
     const extractSessionId =
       options?.extractSessionId ??
       options?.sessionIdFactory ??
@@ -72,7 +72,7 @@ export class JsonRpcRouter {
   }
 
   /**
-   * Stops the dispatcher and waits for all pending requests to complete.
+   * Stops the router and waits for all pending requests to complete.
    */
   async stop() {
     await Promise.allSettled(this.requests);
@@ -107,10 +107,10 @@ export class JsonRpcRouter {
    * @example
    * ```typescript
    * // Simple method without validation
-   * dispatcher.registerMethod('ping', async () => 'pong');
+   * router.registerMethod('ping', async () => 'pong');
    *
    * // Method with input validation
-   * dispatcher.registerMethod(
+   * router.registerMethod(
    *   'user.getById',
    *   async (params) => getUserById(params.id),
    *   {
@@ -119,7 +119,7 @@ export class JsonRpcRouter {
    * );
    *
    * // Method with both input and output validation
-   * dispatcher.registerMethod(
+   * router.registerMethod(
    *   'user.create',
    *   async (params) => createUser(params),
    *   {
@@ -142,7 +142,7 @@ export class JsonRpcRouter {
    * @see {@link enableMethodListing} - For registering introspection methods
    */
   method<
-    InputValidation extends Validation<any> = any,
+    InputValidation extends ParamsValidation<any> = any,
     OutputValidation extends Validation<any> = any,
   >(
     method: string,
@@ -201,10 +201,10 @@ export class JsonRpcRouter {
    * @example
    * ```typescript
    * // Register a listMethods endpoint
-   * dispatcher.registerListMethods('system.listMethods');
+   * router.registerListMethods('system.listMethods');
    *
    * // Register with custom hidden methods
-   * dispatcher.registerListMethods('system.listMethods', ['system.listMethods', 'internal.debug']);
+   * router.registerListMethods('system.listMethods', ['system.listMethods', 'internal.debug']);
    * ```
    *
    * @remarks
@@ -220,26 +220,7 @@ export class JsonRpcRouter {
     hiddenMethods: string[] = [methodNames],
   ) {
     this.method(methodNames, async () => {
-      const methods: { name: string; params: any; result: any }[] = [];
-      for (const name of this.handlers.keys()) {
-        if (hiddenMethods.includes(name)) continue;
-        const validations = this.paramsValidations.get(name);
-        const method = {
-          name,
-          params:
-            validations?.input && validations?.input instanceof z.ZodType
-              ? toJSONSchema(validations.input)
-              : {},
-          result:
-            validations?.output && validations?.output instanceof z.ZodType
-              ? toJSONSchema(validations.output)
-              : {},
-        };
-        methods.push(method);
-      }
-      return {
-        methods,
-      };
+      return fromJsonRpcRouter(this, { hiddenMethods });
     });
   }
 
@@ -531,4 +512,17 @@ export class JsonRpcRouter {
     method: "ALL",
     fetch: this.fetch,
   });
+
+  static *getMethods(jsonRpcRouter: JsonRpcRouter) {
+    for (const method of jsonRpcRouter.handlers.keys()) {
+      const methodKey = method;
+      const validations = jsonRpcRouter.paramsValidations.get(method);
+
+      yield {
+        method: methodKey,
+        params: validations?.input,
+        result: validations?.output,
+      };
+    }
+  }
 }
