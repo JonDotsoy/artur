@@ -1,0 +1,178 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`open-rpc-document should generate OpenRPC document for method with object parameters 1`] = `
+{
+  "info": {
+    "description": "A JSON-RPC service for various operations",
+    "title": "JSON-RPC Service",
+    "version": "1.0.0",
+  },
+  "methods": [
+    {
+      "name": "sum",
+      "params": [
+        {
+          "name": "a",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "number",
+          },
+        },
+        {
+          "name": "b",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "number",
+          },
+        },
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "number",
+        },
+      },
+    },
+  ],
+  "openrpc": "1.3.2",
+}
+`;
+
+exports[`open-rpc-document should generate OpenRPC document for method with tuple parameters 1`] = `
+{
+  "info": {
+    "description": "A JSON-RPC service for various operations",
+    "title": "JSON-RPC Service",
+    "version": "1.0.0",
+  },
+  "methods": [
+    {
+      "name": "sum",
+      "params": [
+        {
+          "name": "item0",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "number",
+          },
+        },
+        {
+          "name": "item1",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "number",
+          },
+        },
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "number",
+        },
+      },
+    },
+  ],
+  "openrpc": "1.3.2",
+}
+`;
+
+exports[`open-rpc-document should generate OpenRPC document for method with object response 1`] = `
+{
+  "info": {
+    "description": "A JSON-RPC service for various operations",
+    "title": "JSON-RPC Service",
+    "version": "1.0.0",
+  },
+  "methods": [
+    {
+      "name": "sum",
+      "params": [
+        {
+          "name": "item0",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "number",
+          },
+        },
+        {
+          "name": "item1",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "number",
+          },
+        },
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "result": {
+              "type": "number",
+            },
+          },
+          "required": [
+            "result",
+          ],
+          "type": "object",
+        },
+      },
+    },
+  ],
+  "openrpc": "1.3.2",
+}
+`;
+
+exports[`open-rpc-document should generate OpenRPC document for method with schema descriptions 1`] = `
+{
+  "info": {
+    "description": "A JSON-RPC service for various operations",
+    "title": "JSON-RPC Service",
+    "version": "1.0.0",
+  },
+  "methods": [
+    {
+      "name": "sum",
+      "params": [
+        {
+          "name": "item0",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "description": "The first number",
+            "type": "number",
+          },
+        },
+        {
+          "name": "item1",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "description": "The second number",
+            "type": "number",
+          },
+        },
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "description": "The result of the sum",
+          "properties": {
+            "result": {
+              "type": "number",
+            },
+          },
+          "required": [
+            "result",
+          ],
+          "type": "object",
+        },
+      },
+    },
+  ],
+  "openrpc": "1.3.2",
+}
+`;
