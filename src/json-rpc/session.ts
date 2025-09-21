@@ -17,7 +17,7 @@ export class Session {
   /**
    * Creates a new JSON-RPC session.
    * @param id - Unique session identifier
-   * @param jsonRpcRouter - The dispatcher instance to handle requests
+   * @param jsonRpcRouter - The router instance to handle requests
    * @param queue - Message queue for handling responses
    */
   constructor(id: string, jsonRpcRouter: JsonRpcRouter, queue: Queue) {
