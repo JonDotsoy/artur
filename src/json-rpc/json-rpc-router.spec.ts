@@ -15,6 +15,8 @@ import { Router } from "../http/router.js";
 import { z } from "zod";
 import { expectTypeOf } from "expect-type";
 import { customRouteSymbol } from "../http/constants/custom-options-symbol.js";
+import type { JsonRpcMiddleware } from "./types/json-rpc-middleware.js";
+import type { JsonRpcHandler } from "./types/json-rpc-handler.js";
 
 describe("JsonRpcError", () => {
   test("should create error with code and message", () => {
@@ -501,6 +503,176 @@ describe("JsonRpcRouter", () => {
         ],
       },
     });
+  });
+
+  test("should override method handler response when router-level middleware returns a result", async () => {
+    const jsonRpcMiddleware1: JsonRpcMiddleware = (): JsonRpcHandler => () => {
+      return {
+        byMiddleware: true,
+        ok: true,
+      };
+    };
+
+    const router = new JsonRpcRouter({
+      middlewares: [jsonRpcMiddleware1],
+    });
+
+    router.method("testMethod", () => ({
+      ok: false,
+    }));
+
+    const response = await router.request({
+      method: "testMethod",
+      jsonrpc: "2.0",
+      id: 1,
+      params: {},
+    });
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      result: {
+        byMiddleware: true,
+        ok: true,
+      },
+    });
+  });
+
+  test("should override method handler response when method-level middleware returns a result", async () => {
+    const jsonRpcMiddleware1: JsonRpcMiddleware = (): JsonRpcHandler => () => {
+      return {
+        byMiddleware: true,
+        ok: true,
+      };
+    };
+
+    const router = new JsonRpcRouter();
+
+    router.method(
+      "testMethod",
+      () => ({
+        ok: false,
+      }),
+      {
+        middlewares: [jsonRpcMiddleware1],
+      },
+    );
+
+    const response = await router.request({
+      method: "testMethod",
+      jsonrpc: "2.0",
+      id: 1,
+      params: {},
+    });
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      result: {
+        byMiddleware: true,
+        ok: true,
+      },
+    });
+  });
+
+  test("should execute method-level middlewares before router-level middlewares in request handling", async () => {
+    const callHandler = mock();
+
+    const jsonRpcMiddleware1: JsonRpcMiddleware =
+      (next): JsonRpcHandler =>
+      (params, request, event) => {
+        callHandler("middleware1");
+        return next(params, request, event);
+      };
+
+    const jsonRpcMiddleware2: JsonRpcMiddleware =
+      (next): JsonRpcHandler =>
+      (params, request, event) => {
+        callHandler("middleware2");
+        return next(params, request, event);
+      };
+
+    const router = new JsonRpcRouter({
+      middlewares: [jsonRpcMiddleware1],
+    });
+
+    router.method(
+      "testMethod",
+      () => ({
+        ok: true,
+      }),
+      {
+        middlewares: [jsonRpcMiddleware2],
+      },
+    );
+
+    const response = await router.request({
+      method: "testMethod",
+      jsonrpc: "2.0",
+      id: 1,
+      params: {},
+    });
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      result: {
+        ok: true,
+      },
+    });
+
+    expect(callHandler).toHaveBeenNthCalledWith(1, "middleware2");
+    expect(callHandler).toHaveBeenNthCalledWith(2, "middleware1");
+  });
+
+  test("should instantiate router-level middlewares before method-level middlewares during setup", async () => {
+    const callMiddleware = mock();
+
+    const jsonRpcMiddleware1: JsonRpcMiddleware = (next): JsonRpcHandler => {
+      callMiddleware("middleware1");
+      return (params, request, event) => {
+        return next(params, request, event);
+      };
+    };
+
+    const jsonRpcMiddleware2: JsonRpcMiddleware = (next): JsonRpcHandler => {
+      callMiddleware("middleware2");
+      return (params, request, event) => {
+        return next(params, request, event);
+      };
+    };
+
+    const router = new JsonRpcRouter({
+      middlewares: [jsonRpcMiddleware1],
+    });
+
+    router.method(
+      "testMethod",
+      () => ({
+        ok: true,
+      }),
+      {
+        middlewares: [jsonRpcMiddleware2],
+      },
+    );
+
+    const response = await router.request({
+      method: "testMethod",
+      jsonrpc: "2.0",
+      id: 1,
+      params: {},
+    });
+
+    expect(response).toMatchObject({
+      id: 1,
+      jsonrpc: "2.0",
+      result: {
+        ok: true,
+      },
+    });
+
+    expect(callMiddleware).toHaveBeenNthCalledWith(1, "middleware1");
+    expect(callMiddleware).toHaveBeenNthCalledWith(2, "middleware2");
   });
 });
 
