@@ -1,14 +1,15 @@
 import { describe, test, expect, mock } from "bun:test";
 import {
   EventSourceRequest,
-  EventSource,
+  EventSourceRoute,
   EventsReadableStream,
-} from "./event-source";
+} from "./event-source-route";
 import { Router } from "../http";
+import { expectTypeOf } from "expect-type";
 
 describe("SentEvent", () => {
   test("should return 406 Not Acceptable when request doesn't accept text/event-stream", async () => {
-    const stream = new EventSource();
+    const stream = new EventSourceRoute();
 
     const response = await stream.fetch(
       new Request("http://localhost", {
@@ -22,7 +23,7 @@ describe("SentEvent", () => {
   });
 
   test("should stream data successfully when accept header is text/event-stream", async () => {
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       async start(request) {
         return new EventsReadableStream({
           start(controller) {
@@ -50,7 +51,7 @@ describe("SentEvent", () => {
   });
 
   test("should automatically close stream and return complete response text", async () => {
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       async start(request) {
         return new EventsReadableStream({
           start(controller) {
@@ -78,7 +79,7 @@ describe("SentEvent", () => {
 
     router.route(
       "/sse",
-      new EventSource({
+      new EventSourceRoute({
         async start(request) {
           return new EventsReadableStream({
             start(controller) {
@@ -103,7 +104,7 @@ describe("SentEvent", () => {
   });
 
   test("should properly handle stream cancellation and cleanup timeouts", async () => {
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       async start(request) {
         let timeout: any;
         return new EventsReadableStream({
@@ -141,7 +142,7 @@ describe("SentEvent", () => {
   });
 
   test("should return null when no create function is provided", async () => {
-    const stream = new EventSource();
+    const stream = new EventSourceRoute();
 
     const readable = await stream.create(
       new EventSourceRequest("last-event-id"),
@@ -154,7 +155,7 @@ describe("SentEvent", () => {
   });
 
   test("should create readable stream when create function is provided", async () => {
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () =>
         new EventsReadableStream({
           start(controller) {
@@ -177,7 +178,7 @@ describe("SentEvent", () => {
   });
 
   test("should expose iterable method on readable stream", async () => {
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () => {},
     });
 
@@ -189,7 +190,7 @@ describe("SentEvent", () => {
   });
 
   test("should return empty array when iterating over stream with no events", async () => {
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () => {},
     });
 
@@ -204,7 +205,7 @@ describe("SentEvent", () => {
   test("should not call mock function when iterating empty stream", async () => {
     const push = mock();
 
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () => {},
     });
 
@@ -222,7 +223,7 @@ describe("SentEvent", () => {
   test("should iterate through multiple events and call mock for each event", async () => {
     const push = mock();
 
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () =>
         new EventsReadableStream({
           start(controller) {
@@ -249,7 +250,7 @@ describe("SentEvent", () => {
   test("should throw error when iterating over stream that emits error", async () => {
     const push = mock();
 
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () =>
         new EventsReadableStream({
           start(controller) {
@@ -272,7 +273,7 @@ describe("SentEvent", () => {
   test("should throw error when start function throws during stream creation", async () => {
     const push = mock();
 
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () => {
         throw new Error("test error");
       },
@@ -286,7 +287,7 @@ describe("SentEvent", () => {
   test("should return 500 status when start function throws during fetch", async () => {
     const push = mock();
 
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () => {
         throw new Error("test error");
       },
@@ -306,7 +307,7 @@ describe("SentEvent", () => {
   test("should return 200 status but reject text promise when stream emits error", async () => {
     const push = mock();
 
-    const stream = new EventSource({
+    const stream = new EventSourceRoute({
       start: () => {
         return new EventsReadableStream({
           start(controller) {
@@ -326,5 +327,27 @@ describe("SentEvent", () => {
 
     expect(response.status).toEqual(200);
     expect(response.text()).rejects.toThrow("test error");
+  });
+
+  test("should provide correct TypeScript types for httpRequest property in EventSourceRequest", async () => {
+    const router = new Router();
+
+    router.route(
+      "/sse",
+      new EventSourceRoute({
+        start(request) {
+          expectTypeOf(request.httpRequest).toEqualTypeOf<
+            Request | undefined
+          >();
+
+          return new EventsReadableStream({
+            start(controller) {
+              controller.enqueue({ data: "from router" });
+              controller.close();
+            },
+          });
+        },
+      }),
+    );
   });
 });

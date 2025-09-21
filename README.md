@@ -254,7 +254,7 @@ router.route("GET", "/hello", async () => new Response("Hello with CORS"));
 
 ## Server-Sent Events (SSE) Support
 
-Artur provides built-in support for Server-Sent Events (SSE) to enable real-time data streaming from server to client. The `EventSource` class implements the EventSource protocol and integrates seamlessly with the router.
+Artur provides built-in support for Server-Sent Events (SSE) to enable real-time data streaming from server to client. The `EventSourceRoute` class implements the EventSource protocol and integrates seamlessly with the router.
 
 ### Features
 
@@ -271,9 +271,9 @@ Artur provides built-in support for Server-Sent Events (SSE) to enable real-time
 ### Basic SSE Setup
 
 ```ts
-import { EventSource, EventsReadableStream, Router } from "artur";
+import { EventSourceRoute, EventsReadableStream, Router } from "artur";
 
-const eventStream = new EventSource({
+const eventStream = new EventSourceRoute({
   start: async (request) => {
     return new EventsReadableStream({
       start(controller) {
@@ -349,7 +349,7 @@ eventSource.close();
 SSE supports automatic stream resumption using the `Last-Event-ID` header:
 
 ```ts
-const eventStream = new EventSource({
+const eventStream = new EventSourceRoute({
   start: async (request) => {
     // Get the last event ID from client for resumption
     const lastEventId = request.lastEventID;
@@ -387,7 +387,7 @@ const eventStream = new EventSource({
 The `EventsReadableStream` provides built-in async iteration capabilities:
 
 ```ts
-const eventStream = new EventSource({
+const eventStream = new EventSourceRoute({
   start: () =>
     new EventsReadableStream({
       start(controller) {
@@ -416,17 +416,17 @@ console.log(events); // [{ id: "1", data: "First event" }, ...]
 
 ### Empty Stream Handling
 
-EventSource gracefully handles empty streams and missing start functions:
+EventSourceRoute gracefully handles empty streams and missing start functions:
 
 ```ts
-// EventSource without start function
-const emptyStream = new EventSource();
+// EventSourceRoute without start function
+const emptyStream = new EventSourceRoute();
 const readable = await emptyStream.create(new EventSourceRequest(null));
 const events = await readable.toArray();
 console.log(events); // [] (empty array)
 
-// EventSource with start function that returns nothing
-const voidStream = new EventSource({
+// EventSourceRoute with start function that returns nothing
+const voidStream = new EventSourceRoute({
   start: () => {}, // Returns undefined
 });
 const readable2 = await voidStream.create(new EventSourceRequest(null));
@@ -437,10 +437,10 @@ console.log(events2); // [] (empty array)
 ### Real-time Notifications Example
 
 ```ts
-import { EventSource, Router } from "artur";
+import { EventSourceRoute, Router } from "artur";
 
 // Simple notification system
-const notifications = new EventSource({
+const notifications = new EventSourceRoute({
   start: async (request) => {
     return new EventsReadableStream({
       start(controller) {
@@ -489,7 +489,7 @@ router.route("/notifications", notifications);
 ### Proper Resource Management
 
 ```ts
-const eventStream = new EventSource({
+const eventStream = new EventSourceRoute({
   start: async (request) => {
     return new EventsReadableStream({
       start(controller) {
@@ -534,11 +534,11 @@ reader.cancel();
 
 ### Error Handling in SSE
 
-EventSource provides comprehensive error handling for different failure scenarios:
+EventSourceRoute provides comprehensive error handling for different failure scenarios:
 
 ```ts
 // Start function errors during HTTP requests return 500 status
-const errorStream = new EventSource({
+const errorStream = new EventSourceRoute({
   start: () => {
     throw new Error("Configuration error");
   },
@@ -552,7 +552,7 @@ const response = await errorStream.fetch(
 console.log(response.status); // 500
 
 // Stream runtime errors
-const runtimeErrorStream = new EventSource({
+const runtimeErrorStream = new EventSourceRoute({
   start: () =>
     new EventsReadableStream({
       start(controller) {
@@ -571,7 +571,7 @@ try {
 }
 
 // Graceful error handling in start function
-const gracefulStream = new EventSource({
+const gracefulStream = new EventSourceRoute({
   start: async (request) => {
     try {
       const data = await fetchExternalData();
@@ -652,7 +652,7 @@ class EventsReadableStream extends ReadableStream<Event> {
 
 ### Testing Support
 
-EventSource includes comprehensive test coverage for:
+EventSourceRoute includes comprehensive test coverage for:
 
 - ✅ Basic SSE streaming functionality
 - ✅ HTTP router integration
@@ -672,7 +672,7 @@ EventSource includes comprehensive test coverage for:
 - **Structured data**: Use JSON for complex data structures in the `data` field
 - **Resource management**: Clear intervals and cleanup resources in the cancel method
 - **Test thoroughly**: Ensure your implementation handles empty streams, errors, and cancellation
-- **Accept header validation**: Let EventSource automatically handle Accept header validation
+- **Accept header validation**: Let EventSourceRoute automatically handle Accept header validation
 - **Graceful error handling**: Handle start function errors to avoid 500 responses
 - **Async iteration**: Use `iterable()` method for processing events with async loops
 
@@ -1381,8 +1381,8 @@ import {
 For Server-Sent Events functionality, Artur exports the following classes and types:
 
 ```ts
-// Main EventSource class available from "artur"
-import { EventSource } from "artur";
+// Main EventSourceRoute class available from "artur"
+import { EventSourceRoute } from "artur";
 
 // For additional SSE types and utilities, import directly from event-source module
 import {
