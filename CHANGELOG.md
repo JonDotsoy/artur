@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.11.0](https://github.com/JonDotsoy/artur/compare/artur-v1.10.1...artur-v1.11.0) (2025-09-21)
+
+
+### Features
+
+* **event-source:** rename EventSource to EventSourceRoute and add HTTP request access ([#66](https://github.com/JonDotsoy/artur/issues/66)) ([6544a54](https://github.com/JonDotsoy/artur/commit/6544a54cbedc6a4647761690a9dd57b8e1dd40b7))
+* **event-source:** rename EventSource to EventSourceRoute and update related documentation and tests ([b6cb104](https://github.com/JonDotsoy/artur/commit/b6cb1043563ceee601285008bc5bb8973c950002))
+* implement OpenRPC document generation with enhanced validation types 3b0052feb904cf354aaed9e1d16916196a7966d9 ([90d23dd](https://github.com/JonDotsoy/artur/commit/90d23ddd5452cfa1927a45a4c0df36bba2936d2e))
+* **json-rpc:** add comprehensive middleware support with router and method-level configuration 8d6693fb250d15eb1bb6fb918e5e496750cacaa4 ([59c712e](https://github.com/JonDotsoy/artur/commit/59c712e980cc3b76605565f532f752e3ad64f92b))
+
 ## [1.10.1](https://github.com/JonDotsoy/artur/compare/artur-v1.10.0...artur-v1.10.1) (2025-09-18)
 
 
