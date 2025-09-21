@@ -6,7 +6,6 @@ import type { JsonRpcResponse } from "./types/json-rpc-response.js";
 import type { JsonRpcRequest } from "./types/json-rpc-request.js";
 import type { JsonRpcNotification } from "./types/json-rpc-notification.js";
 import { JsonRpcError } from "./json-rpc-error.js";
-import { z, toJSONSchema } from "zod";
 import { Router } from "../http/router.js";
 import { Queue } from "@jondotsoy/utils-js/queue";
 import { bodyRequest } from "./schemas/body-request.js";
@@ -19,6 +18,7 @@ import {
   EventSource,
   EventsReadableStream,
 } from "../event-source/event-source.js";
+import { fromJsonRpcRouter } from "./utils/open-rpc-document.js";
 
 export type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
 export type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
@@ -220,26 +220,7 @@ export class JsonRpcRouter {
     hiddenMethods: string[] = [methodNames],
   ) {
     this.method(methodNames, async () => {
-      const methods: { name: string; params: any; result: any }[] = [];
-      for (const name of this.handlers.keys()) {
-        if (hiddenMethods.includes(name)) continue;
-        const validations = this.paramsValidations.get(name);
-        const method = {
-          name,
-          params:
-            validations?.input && validations?.input instanceof z.ZodType
-              ? toJSONSchema(validations.input)
-              : {},
-          result:
-            validations?.output && validations?.output instanceof z.ZodType
-              ? toJSONSchema(validations.output)
-              : {},
-        };
-        methods.push(method);
-      }
-      return {
-        methods,
-      };
+      return fromJsonRpcRouter(this, { hiddenMethods });
     });
   }
 

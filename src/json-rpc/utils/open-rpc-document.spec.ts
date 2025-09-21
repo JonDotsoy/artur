@@ -46,10 +46,15 @@ describe("open-rpc-document", () => {
     const router = new JsonRpcRouter();
 
     router.method("sum", ([a, b]) => ({ result: a + b }), {
-      inputValidation: z.tuple([z.number().describe("The first number"), z.number().describe("The second number")]),
-      outputValidation: z.object({
-        result: z.number(),
-      }).describe("The result of the sum"),
+      inputValidation: z.tuple([
+        z.number().describe("The first number"),
+        z.number().describe("The second number"),
+      ]),
+      outputValidation: z
+        .object({
+          result: z.number(),
+        })
+        .describe("The result of the sum"),
     });
 
     expect(fromJsonRpcRouter(router)).toMatchSnapshot();

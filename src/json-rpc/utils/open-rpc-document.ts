@@ -413,7 +413,10 @@ export type OpenRPCVersion = `1.0.${number}`;
  */
 export const SERVICE_DISCOVERY_METHOD = "rpc.discover" as const;
 
-export const fromJsonRpcRouter = (jsonRpcRouter: JsonRpcRouter) => {
+export const fromJsonRpcRouter = (
+  jsonRpcRouter: JsonRpcRouter,
+  options?: { hiddenMethods?: string[] },
+) => {
   const document: OpenRPCDocument = {
     openrpc: "1.3.2",
     info: {
@@ -429,6 +432,9 @@ export const fromJsonRpcRouter = (jsonRpcRouter: JsonRpcRouter) => {
   for (const { method, params, result } of JsonRpcRouter.getMethods(
     jsonRpcRouter,
   )) {
+    const isHiddenMethod = options?.hiddenMethods?.includes(method);
+    if (isHiddenMethod) continue;
+
     const paramsO: (ContentDescriptorObject | ReferenceObject)[] = [];
     let resulO: undefined | ContentDescriptorObject | ReferenceObject =
       undefined;
