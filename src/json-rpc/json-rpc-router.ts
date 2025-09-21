@@ -45,7 +45,7 @@ export class JsonRpcRouter {
   >();
 
   /** Configuration options for the router */
-  private options: JsonRpcRouterOptions;
+  readonly options: JsonRpcRouterOptions;
 
   /**
    * Creates a new JSON-RPC router.
@@ -531,4 +531,17 @@ export class JsonRpcRouter {
     method: "ALL",
     fetch: this.fetch,
   });
+
+  static *getMethods(jsonRpcRouter: JsonRpcRouter) {
+    for (const method of jsonRpcRouter.handlers.keys()) {
+      const methodKey = method;
+      const validations = jsonRpcRouter.paramsValidations.get(method);
+
+      yield {
+        method: methodKey,
+        params: validations?.input,
+        result: validations?.output,
+      };
+    }
+  }
 }

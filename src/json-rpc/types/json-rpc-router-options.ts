@@ -14,4 +14,10 @@ export type JsonRpcRouterOptions = {
   extractSessionId: (
     event: JsonRpcEvent,
   ) => string | null | Promise<string | null>;
+
+  info?: {
+    title?: string;
+    version?: string;
+    description?: string;
+  };
 };
