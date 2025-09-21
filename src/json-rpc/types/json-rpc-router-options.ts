@@ -1,4 +1,5 @@
 import type { JsonRpcEvent } from "./json-rpc-event.js";
+import type { JsonRpcMiddleware } from "./json-rpc-middleware.js";
 
 /**
  * Configuration options for JsonRpcRouter.
@@ -20,4 +21,7 @@ export type JsonRpcRouterOptions = {
     version?: string;
     description?: string;
   };
+
+  /** Array of middleware functions to be applied to JSON-RPC requests and notifications */
+  middlewares?: JsonRpcMiddleware[];
 };

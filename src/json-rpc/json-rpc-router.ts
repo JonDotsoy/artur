@@ -19,6 +19,7 @@ import {
   EventsReadableStream,
 } from "../event-source/event-source.js";
 import { fromJsonRpcRouter } from "./utils/open-rpc-document.js";
+import type { JsonRpcMiddleware } from "./types/json-rpc-middleware.js";
 
 export type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
 export type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
@@ -43,6 +44,12 @@ export class JsonRpcRouter {
     string,
     { input?: ParamsValidation<any>; output?: Validation<any> }
   >();
+  /**
+   * A map that stores middleware functions for each JSON-RPC method.
+   * The key is the method name and the value is an array of middleware functions
+   * that will be executed in order when the corresponding method is called.
+   */
+  private methodsMiddlewares = new Map<string, JsonRpcMiddleware[]>();
 
   /** Configuration options for the router */
   readonly options: JsonRpcRouterOptions;
@@ -84,42 +91,51 @@ export class JsonRpcRouter {
   }
 
   /**
-   * Registers a method handler for JSON-RPC requests with optional input/output validation.
+   * Registers a method handler for JSON-RPC requests with optional validation and middleware support.
    *
-   * This method allows you to register handlers for specific JSON-RPC method names.
-   * You can optionally provide Zod validation schemas for both input parameters and
-   * output results to ensure type safety and data validation.
+   * This method allows you to register handlers for specific JSON-RPC method names with comprehensive
+   * configuration options including input/output validation using Zod schemas and middleware chains
+   * for cross-cutting concerns like authentication, logging, and request/response transformation.
    *
-   * @template InputValidation - Type of the input validation schema (extends Validation<any>)
+   * @template InputValidation - Type of the input validation schema (extends ParamsValidation<any>)
    * @template OutputValidation - Type of the output validation schema (extends Validation<any>)
    *
-   * @param method - The JSON-RPC method name to register (e.g., 'user.getById', 'system.info')
+   * @param method - The JSON-RPC method name to register (e.g., 'user.getById', 'system.info', 'auth.login')
    * @param handler - The async function that handles the JSON-RPC request. Receives:
-   *                  - params: The request parameters (validated if inputValidation is provided)
-   *                  - request: The full JSON-RPC request object
-   *                  - event: Additional event context (e.g., HTTP request info)
-   * @param options - Optional configuration object for validation
+   *                  - params: The request parameters (type-safe if inputValidation is provided)
+   *                  - request: The full JSON-RPC request object (JsonRpcRequest | JsonRpcNotification)
+   *                  - event: Additional event context (e.g., HTTP request info, session data)
+   * @param options - Optional configuration object for validation and middleware
    * @param options.inputValidation - Zod schema for validating input parameters before calling the handler.
-   *                                  If validation fails, returns a JSON-RPC error (-32602 Invalid params)
+   *                                  If validation fails, returns a JSON-RPC error (-32602 Invalid params).
+   *                                  Provides compile-time type safety for the params argument.
    * @param options.outputValidation - Zod schema for validating the handler's return value.
-   *                                   If validation fails, returns a JSON-RPC error (-32603 Internal error)
+   *                                   If validation fails, returns a JSON-RPC error (-32603 Internal error).
+   *                                   Ensures consistent response format and type safety.
+   * @param options.middlewares - Array of method-specific middleware functions that will be executed
+   *                              in addition to any router-level middlewares. Method middlewares
+   *                              execute first, followed by router middlewares. Each middleware
+   *                              can transform the request, response, or completely override the handler.
    *
    * @example
    * ```typescript
-   * // Simple method without validation
-   * router.registerMethod('ping', async () => 'pong');
+   * // Simple method without validation or middleware
+   * router.method('ping', async () => 'pong');
    *
-   * // Method with input validation
-   * router.registerMethod(
+   * // Method with input validation and type safety
+   * router.method(
    *   'user.getById',
-   *   async (params) => getUserById(params.id),
+   *   async (params) => {
+   *     // params is now typed as { id: string }
+   *     return getUserById(params.id);
+   *   },
    *   {
    *     inputValidation: z.object({ id: z.string() })
    *   }
    * );
    *
    * // Method with both input and output validation
-   * router.registerMethod(
+   * router.method(
    *   'user.create',
    *   async (params) => createUser(params),
    *   {
@@ -130,16 +146,73 @@ export class JsonRpcRouter {
    *     outputValidation: z.object({
    *       id: z.string(),
    *       name: z.string(),
-   *       email: z.string()
+   *       email: z.string(),
+   *       createdAt: z.date()
    *     })
    *   }
    * );
+   *
+   * // Method with middleware for authentication and logging
+   * const authMiddleware: JsonRpcMiddleware = (next) => async (params, request, event) => {
+   *   if (!event.httpRequest?.headers.get('authorization')) {
+   *     throw new JsonRpcError(-32001, 'Authentication required');
+   *   }
+   *   return next(params, request, event);
+   * };
+   *
+   * const loggingMiddleware: JsonRpcMiddleware = (next) => async (params, request, event) => {
+   *   console.log(`Processing method: ${request.method}`);
+   *   const result = await next(params, request, event);
+   *   console.log(`Method ${request.method} completed`);
+   *   return result;
+   * };
+   *
+   * router.method(
+   *   'admin.deleteUser',
+   *   async (params) => deleteUser(params.userId),
+   *   {
+   *     inputValidation: z.object({ userId: z.string() }),
+   *     middlewares: [authMiddleware, loggingMiddleware]
+   *   }
+   * );
+   *
+   * // Middleware that completely overrides the handler response
+   * const cacheMiddleware: JsonRpcMiddleware = (next) => async (params, request, event) => {
+   *   const cacheKey = `${request.method}:${JSON.stringify(params)}`;
+   *   const cached = getFromCache(cacheKey);
+   *   if (cached) {
+   *     return cached; // Skip calling next() to override handler
+   *   }
+   *   const result = await next(params, request, event);
+   *   setCache(cacheKey, result);
+   *   return result;
+   * };
    * ```
    *
-   * @throws Will not throw directly, but validation errors are returned as JSON-RPC error responses
+   * @remarks
+   * **Middleware Execution Order:**
+   * 1. Method-level middlewares (specified in options.middlewares) execute first
+   * 2. Router-level middlewares (specified in constructor) execute second
+   * 3. The original handler executes last (unless a middleware returns early)
+   *
+   * **Validation Flow:**
+   * 1. Input validation runs before any middleware or handler
+   * 2. Handler and middleware logic execute
+   * 3. Output validation runs on the final result
+   *
+   * **Type Safety:**
+   * When inputValidation is provided, the params argument in the handler becomes
+   * type-safe based on the Zod schema. Without validation, params is typed as `unknown`.
+   *
+   * @throws Will not throw directly, but validation errors are returned as JSON-RPC error responses:
+   *         - -32602 "Invalid params" for input validation failures
+   *         - -32603 "Internal error" for output validation failures
+   *         - -32601 "Method not found" if the method is not registered
    *
    * @see {@link use} - Deprecated alias for this method
-   * @see {@link enableMethodListing} - For registering introspection methods
+   * @see {@link enableMethodListing} - For registering method discovery/introspection endpoints
+   * @see {@link JsonRpcMiddleware} - For creating custom middleware functions
+   * @see {@link JsonRpcHandler} - For the handler function signature
    */
   method<
     InputValidation extends ParamsValidation<any> = any,
@@ -153,9 +226,13 @@ export class JsonRpcRouter {
     options?: {
       inputValidation?: InputValidation;
       outputValidation?: OutputValidation;
+      middlewares?: JsonRpcMiddleware[];
     },
   ): void {
     this.handlers.set(method, handler);
+    if (options?.middlewares) {
+      this.methodsMiddlewares.set(method, options.middlewares);
+    }
     if (options?.inputValidation || options?.outputValidation) {
       this.paramsValidations.set(method, {
         input: options.inputValidation,
@@ -291,9 +368,31 @@ export class JsonRpcRouter {
 
     const params = this.parseParams(method, request.params);
 
+    const routerMiddlewares = this.options.middlewares ?? [];
+    const methodMiddlewares = this.methodsMiddlewares.get(method) ?? [];
+
+    /**
+     * Creates a middleware chain by reducing an array of middlewares into a single handler.
+     * The middlewares are applied in reverse order, where each middleware wraps the next
+     * handler in the chain, starting from the base handler.
+     *
+     * @remarks
+     * This follows the common middleware pattern where each middleware function takes
+     * the next handler as a parameter and returns a new handler that can optionally
+     * call the next handler in the chain.
+     */
+    const next: JsonRpcHandler = [
+      ...routerMiddlewares,
+      ...methodMiddlewares,
+    ].reduce(
+      (next: JsonRpcHandler, middleware: JsonRpcMiddleware): JsonRpcHandler =>
+        middleware(next),
+      handler,
+    );
+
     const result = this.parseResult(
       method,
-      await handler(params, request, event ?? {}),
+      await next(params, request, event ?? {}),
     );
 
     if (!requestId) return null;
