@@ -37,13 +37,17 @@ type Options = {
  */
 export class EventSourceRequest {
   #lastEventID: string | null;
+  #httpRequest: Request | undefined;
 
   /**
-   * Creates a new SentEventRequest instance.
-   * @param lastEventID - The last event ID received by the client, used for resuming streams
+   * Creates a new EventSourceRoute instance.
+   *
+   * @param lastEventID - The ID of the last event received by the client, or null if no previous events
+   * @param httpRequest - Optional HTTP request object associated with this event source connection
    */
-  constructor(lastEventID: string | null) {
+  constructor(lastEventID: string | null, httpRequest?: Request) {
     this.#lastEventID = lastEventID;
+    this.#httpRequest = httpRequest;
   }
 
   /**
@@ -52,6 +56,14 @@ export class EventSourceRequest {
    */
   get lastEventID() {
     return this.#lastEventID;
+  }
+
+  /**
+   * Gets the HTTP request object associated with this event source route.
+   * @returns The HTTP request object
+   */
+  get httpRequest() {
+    return this.#httpRequest;
   }
 }
 
@@ -92,7 +104,7 @@ export class EventsReadableStream extends ReadableStream<Event> {
  * Provides real-time data streaming capabilities over HTTP using the text/event-stream content type.
  * Can be integrated with HTTP routers and supports custom stream creation logic.
  */
-export class EventSource {
+export class EventSourceRoute {
   #start?: Start;
 
   /**
@@ -136,7 +148,7 @@ export class EventSource {
       return new Response("Not Acceptable", { status: 406 });
     }
 
-    const sentEventRequest = new EventSourceRequest(lastEventID);
+    const sentEventRequest = new EventSourceRequest(lastEventID, request);
 
     const [error, readable] = await t(async () =>
       this.#start?.(sentEventRequest),

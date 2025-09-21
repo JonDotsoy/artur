@@ -15,9 +15,9 @@ import { sessionMemoryStore } from "./create-session-memory-store.1.js";
 import { Session } from "./session.js";
 import { defaultRouteArguments } from "../http/utils/parse-route-arguments.js";
 import {
-  EventSource,
+  EventSourceRoute,
   EventsReadableStream,
-} from "../event-source/event-source.js";
+} from "../event-source/event-source-route.js";
 import { fromJsonRpcRouter } from "./utils/open-rpc-document.js";
 import type { JsonRpcMiddleware } from "./types/json-rpc-middleware.js";
 
@@ -492,7 +492,7 @@ export class JsonRpcRouter {
 
           const session = this.openSession(sessionId);
 
-          const eventSource = new EventSource({
+          const eventSource = new EventSourceRoute({
             async start() {
               return new EventsReadableStream({
                 start: async (controller) => {

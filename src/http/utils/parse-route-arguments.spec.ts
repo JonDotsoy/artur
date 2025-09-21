@@ -5,7 +5,7 @@ import type { Fetch } from "../types/fetch-type";
 import { customRouteSymbol } from "../constants/custom-options-symbol";
 import { Router } from "../router";
 import { JsonRpcRouter } from "../../json-rpc";
-import { EventSource } from "../../event-source/event-source";
+import { EventSourceRoute } from "../../event-source/event-source-route";
 import { Route } from "../route";
 
 describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
@@ -427,7 +427,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse urlPattern string and EventSource instance with default method 'ALL'", async () => {
-    const result = parseRouteArguments("/api", new EventSource());
+    const result = parseRouteArguments("/api", new EventSourceRoute());
     const route = Route.parse(result);
 
     expect(result).toBeObject();
@@ -439,7 +439,7 @@ describe("parseRouteArguments - flexible HTTP route argument parsing", () => {
   });
 
   test("should parse method, urlPattern string, and EventSource instance", async () => {
-    const result = parseRouteArguments("GET", "/api", new EventSource());
+    const result = parseRouteArguments("GET", "/api", new EventSourceRoute());
     const route = Route.parse(result);
 
     expect(result).toBeObject();

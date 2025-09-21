@@ -40,9 +40,9 @@
       "default": "./lib/esm/json-rpc/index.js"
     },
     "./event-source": {
-      "import": "./lib/esm/event-source/event-source.js",
-      "types": "./lib/types/event-source/event-source.d.ts",
-      "default": "./lib/esm/event-source/event-source.js"
+      "import": "./lib/esm/event-source/event-source-route.js",
+      "types": "./lib/types/event-source/event-source-route.d.ts",
+      "default": "./lib/esm/event-source/event-source-route.js"
     }
   },
   "devDependencies": {
