@@ -1,5 +1,5 @@
 import type { ExtractValidationType } from "./types/extract-validation-type.js";
-import type { Validation } from "./types/validation.js";
+import type { ParamsValidation, Validation } from "./types/validation.js";
 import type { JsonRpcHandler } from "./types/json-rpc-handler.js";
 import type { JsonRpcEvent } from "./types/json-rpc-event.js";
 import type { JsonRpcResponse } from "./types/json-rpc-response.js";
@@ -41,7 +41,7 @@ export class JsonRpcRouter {
   /** Map of method names to their parameter validation schemas */
   private paramsValidations = new Map<
     string,
-    { input?: Validation<any>; output?: Validation<any> }
+    { input?: ParamsValidation<any>; output?: Validation<any> }
   >();
 
   /** Configuration options for the router */
@@ -142,7 +142,7 @@ export class JsonRpcRouter {
    * @see {@link enableMethodListing} - For registering introspection methods
    */
   method<
-    InputValidation extends Validation<any> = any,
+    InputValidation extends ParamsValidation<any> = any,
     OutputValidation extends Validation<any> = any,
   >(
     method: string,
