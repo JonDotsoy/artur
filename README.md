@@ -1,4 +1,4 @@
-# Artur - Router()
+# <img src="docs/brand/assets/symbol.svg" /> Artur - Router()
 
 Artur is a lightweight web framework for building HTTP services with minimal setup. It features a URLPattern based router, a simple middleware layer and runs on both **Node.js** and **Bun**.
 
