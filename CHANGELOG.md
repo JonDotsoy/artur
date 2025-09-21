@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/JonDotsoy/artur/compare/artur-v1.10.1...artur-v1.11.0) (2025-09-21)
+
+
+### Miscellaneous Chores
+
+* release 1.11.0 ([614babf](https://github.com/JonDotsoy/artur/commit/614babf401bcc0e3e88877ad6f8e2097aca019fa))
+
 ## [1.10.1](https://github.com/JonDotsoy/artur/compare/artur-v1.10.0...artur-v1.10.1) (2025-09-18)
 
 
