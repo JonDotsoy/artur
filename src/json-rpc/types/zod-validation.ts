@@ -9,7 +9,7 @@ export type ParamsZodValidation<T> =
   T extends Record<string, any>
     ? z.ZodObject<T>
     : T extends any[]
-      ? z.ZodArray<z.ZodType<T[number]>>
+      ? z.ZodTuple<T>
       : never;
 // z.ZodObject | z.ZodArray;
 // {
