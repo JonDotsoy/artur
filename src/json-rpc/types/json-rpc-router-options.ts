@@ -1,9 +1,9 @@
 import type { JsonRpcEvent } from "./json-rpc-event.js";
 
 /**
- * Configuration options for JsonRpcDispatcher.
+ * Configuration options for JsonRpcRouter.
  */
-export type JsonRpcDispatcherOptions = {
+export type JsonRpcRouterOptions = {
   /** Whether Server-Sent Events (SSE) support is enabled for real-time communication */
   sseEnabled: boolean;
   /** @deprecated Use {@link extractSessionId} instead. */
