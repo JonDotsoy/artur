@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.1](https://github.com/JonDotsoy/artur/compare/artur-v1.11.0...artur-v1.11.1) (2025-09-22)
+
+
+### Bug Fixes
+
+* **router:** update middleware handling in fetch method ([3e87fdc](https://github.com/JonDotsoy/artur/commit/3e87fdc74effbeb3eb07439e58c1dc6e85b388a9))
+* simplify middleware handling in JsonRpcRouter using decorator ([6e91b17](https://github.com/JonDotsoy/artur/commit/6e91b17c6737a626dc23abd13577ab6fe5c377b9))
+
 ## [1.11.0](https://github.com/JonDotsoy/artur/compare/artur-v1.10.1...artur-v1.11.0) (2025-09-21)
 
 
