@@ -75,17 +75,19 @@ export class Router<E extends ErrorHandling = "default-catching"> {
   };
 
   fetch: Fetch = async (request: Request): Promise<Response> => {
-    const middlewareDecorators: Middleware<any>[] = [
-      ...(this.options.middlewares ?? []),
-    ];
+    const routerMiddlewares = this.options.middlewares ?? [];
 
     try {
       for (const route of this.routes) {
         if (await route.test(request)) {
-          middlewareDecorators.push(...route.middlewares);
+          const routeMiddlewares = route.middlewares;
           const fetch: Fetch = route.fetch;
-          const fetchDecorate = decorate(fetch, ...middlewareDecorators);
-          return await fetchDecorate(request);
+          const fetchDecorated = decorate(
+            fetch,
+            ...routerMiddlewares,
+            ...routeMiddlewares,
+          );
+          return await fetchDecorated(request);
         }
       }
 
