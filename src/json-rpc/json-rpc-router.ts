@@ -20,6 +20,7 @@ import {
 } from "../event-source/event-source-route.js";
 import { fromJsonRpcRouter } from "./utils/open-rpc-document.js";
 import type { JsonRpcMiddleware } from "./types/json-rpc-middleware.js";
+import { decorate } from "@jondotsoy/decorate";
 
 export type { JsonRpcErrorResponse } from "./types/json-rpc-error-response.js";
 export type { JsonRpcResultResponse } from "./types/json-rpc-result-response.js";
@@ -381,14 +382,7 @@ export class JsonRpcRouter {
      * the next handler as a parameter and returns a new handler that can optionally
      * call the next handler in the chain.
      */
-    const next: JsonRpcHandler = [
-      ...routerMiddlewares,
-      ...methodMiddlewares,
-    ].reduce(
-      (next: JsonRpcHandler, middleware: JsonRpcMiddleware): JsonRpcHandler =>
-        middleware(next),
-      handler,
-    );
+    const next = decorate(handler, ...routerMiddlewares, ...methodMiddlewares);
 
     const result = this.parseResult(
       method,
