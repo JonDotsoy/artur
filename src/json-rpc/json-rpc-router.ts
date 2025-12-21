@@ -225,6 +225,8 @@ export class JsonRpcRouter {
       ExtractValidationType<OutputValidation>
     >,
     options?: {
+      paramsValidation?: InputValidation;
+      /** @deprecated Use `paramsValidation` instead. This option will be removed in a future version. */
       inputValidation?: InputValidation;
       outputValidation?: OutputValidation;
       middlewares?: JsonRpcMiddleware[];
@@ -234,10 +236,13 @@ export class JsonRpcRouter {
     if (options?.middlewares) {
       this.methodsMiddlewares.set(method, options.middlewares);
     }
-    if (options?.inputValidation || options?.outputValidation) {
+    const paramsValidation =
+      options?.paramsValidation ?? options?.inputValidation;
+    const outputValidation = options?.outputValidation;
+    if (paramsValidation || outputValidation) {
       this.paramsValidations.set(method, {
-        input: options.inputValidation,
-        output: options.outputValidation,
+        input: paramsValidation,
+        output: outputValidation,
       });
     }
   }
@@ -419,12 +424,12 @@ export class JsonRpcRouter {
       .catch((error) => {
         if (JsonRpcError.isJsonRpcError(error)) {
           return error.toJsonRpcResponse(
-            "id" in request ? request.id ?? null : null,
+            "id" in request ? (request.id ?? null) : null,
           );
         }
         console.error("Internal error processing request:", error);
         return new JsonRpcError(-32603, "Internal error").toJsonRpcResponse(
-          "id" in request ? request.id ?? null : null,
+          "id" in request ? (request.id ?? null) : null,
         );
       })
       .finally(() => {
