@@ -8,7 +8,7 @@ describe("open-rpc-document", () => {
     const router = new JsonRpcRouter();
 
     router.method("sum", (params) => params.a + params.b, {
-      inputValidation: z.object({
+      paramsValidation: z.object({
         a: z.number(),
         b: z.number(),
       }),
@@ -22,7 +22,7 @@ describe("open-rpc-document", () => {
     const router = new JsonRpcRouter();
 
     router.method("sum", ([a, b]) => a + b, {
-      inputValidation: z.tuple([z.number(), z.number()]),
+      paramsValidation: z.tuple([z.number(), z.number()]),
       outputValidation: z.number(),
     });
 
@@ -33,7 +33,7 @@ describe("open-rpc-document", () => {
     const router = new JsonRpcRouter();
 
     router.method("sum", ([a, b]) => ({ result: a + b }), {
-      inputValidation: z.tuple([z.number(), z.number()]),
+      paramsValidation: z.tuple([z.number(), z.number()]),
       outputValidation: z.object({
         result: z.number(),
       }),
@@ -46,7 +46,7 @@ describe("open-rpc-document", () => {
     const router = new JsonRpcRouter();
 
     router.method("sum", ([a, b]) => ({ result: a + b }), {
-      inputValidation: z.tuple([
+      paramsValidation: z.tuple([
         z.number().describe("The first number"),
         z.number().describe("The second number"),
       ]),

@@ -252,7 +252,7 @@ describe("JsonRpcRouter", () => {
         expectTypeOf(params).toEqualTypeOf<{ name: string }>();
       },
       {
-        inputValidation: input,
+        paramsValidation: input,
       },
     );
   });
@@ -280,7 +280,7 @@ describe("JsonRpcRouter", () => {
         };
       },
       {
-        inputValidation: input,
+        paramsValidation: input,
         outputValidation: output,
       },
     );
@@ -327,7 +327,7 @@ describe("JsonRpcRouter", () => {
     });
 
     dispatcher.method("testMethod", handler, {
-      inputValidation: input,
+      paramsValidation: input,
     });
 
     expect(async () => {
@@ -353,7 +353,7 @@ describe("JsonRpcRouter", () => {
     });
 
     dispatcher.method("testMethod", handler, {
-      inputValidation: input,
+      paramsValidation: input,
     });
 
     const response = await dispatcher.request({
@@ -383,7 +383,7 @@ describe("JsonRpcRouter", () => {
     });
 
     dispatcher.method("testMethod", handler, {
-      inputValidation: input,
+      paramsValidation: input,
     });
 
     const response = await dispatcher.request({
@@ -442,7 +442,7 @@ describe("JsonRpcRouter", () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
-      inputValidation: z.object({ name: z.string() }),
+      paramsValidation: z.object({ name: z.string() }),
     });
 
     dispatcher.enableMethodListing("rpc.discover");
@@ -452,7 +452,7 @@ describe("JsonRpcRouter", () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
-      inputValidation: z.object({ name: z.string() }),
+      paramsValidation: z.object({ name: z.string() }),
     });
 
     dispatcher.enableMethodListing("rpc.discover");
@@ -478,7 +478,7 @@ describe("JsonRpcRouter", () => {
     const dispatcher = new JsonRpcRouter();
 
     dispatcher.method("testMethod", mock(), {
-      inputValidation: z.object({ name: z.string() }),
+      paramsValidation: z.object({ name: z.string() }),
       outputValidation: z.object({ ok: z.boolean() }),
     });
 
